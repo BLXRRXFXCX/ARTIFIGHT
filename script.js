@@ -816,10 +816,18 @@ document.getElementById('elements-btn').addEventListener('click', showElementsMo
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         currentUser = user;
-        userProfile = await saveUserProfile(user);
-        document.getElementById('player-name').textContent = userProfile.name;
-        document.getElementById('player-rating').textContent = userProfile.ratings.CLASSIC || 1000;
-        showScreen('lobby-screen');
+        try {
+            userProfile = await saveUserProfile(user);
+            document.getElementById('player-name').textContent = userProfile.name;
+            document.getElementById('player-rating').textContent = userProfile.ratings?.CLASSIC || 1000;
+            showScreen('lobby-screen');
+        } catch (error) {
+            console.error("Ошибка загрузки профиля:", error);
+            // Если не удалось загрузить профиль, показываем лобби с базовыми данными
+            document.getElementById('player-name').textContent = user.displayName || 'Игрок';
+            document.getElementById('player-rating').textContent = '1000';
+            showScreen('lobby-screen');
+        }
     } else {
         currentUser = null;
         userProfile = null;
