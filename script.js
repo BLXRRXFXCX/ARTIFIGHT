@@ -182,21 +182,36 @@ function showInfo(text, duration = 2000) {
 // ============ FIREBASE ЛОГИКА ============
 
 async function saveUserProfile(user) {
-    const userRef = doc(db, "users", user.uid);
-    const snap = await getDoc(userRef);
-    if (!snap.exists()) {
-        await setDoc(userRef, {
+    try {
+        const userRef = doc(db, "users", user.uid);
+        const snap = await getDoc(userRef);
+        
+        if (!snap.exists()) {
+            const newProfile = {
+                uid: user.uid,
+                name: user.displayName || "Игрок",
+                email: user.email || "",
+                photoURL: user.photoURL || "",
+                ratings: { CLASSIC: 1000 },
+                stats: { CLASSIC: { wins: 0, losses: 0 } },
+                createdAt: Date.now()
+            };
+            await setDoc(userRef, newProfile);
+            return newProfile;
+        }
+        
+        return snap.data();
+    } catch (error) {
+        console.error("Ошибка сохранения профиля:", error);
+        // Возвращаем базовый профиль при ошибке
+        return {
             uid: user.uid,
             name: user.displayName || "Игрок",
-            email: user.email,
-            photoURL: user.photoURL,
+            email: user.email || "",
             ratings: { CLASSIC: 1000 },
-            stats: { CLASSIC: { wins: 0, losses: 0 } },
-            createdAt: Date.now()
-        });
+            stats: { CLASSIC: { wins: 0, losses: 0 } }
+        };
     }
-    const freshSnap = await getDoc(userRef);
-    return freshSnap.data();
 }
 
 async function updateRating(delta) {
