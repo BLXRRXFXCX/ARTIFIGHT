@@ -1,40 +1,77 @@
+/* =====================================================
+   БЛОК 1: ПОДКЛЮЧЕНИЕ FIREBASE
+   Импорты SDK и инициализация приложения.
+   ===================================================== */
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import{getAuth,signInWithPopup,GoogleAuthProvider,signOut,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import{getFirestore,doc,getDoc,setDoc,updateDoc,collection,query,where,limit as lim,getDocs,addDoc,deleteDoc,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import{getFirestore,doc,getDoc,setDoc,updateDoc,collection,query,where,limit as lim,getDocs,addDoc,deleteDoc,onSnapshot}from"https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// ============ FIREBASE CONFIG ============
-const CFG={apiKey:"AIzaSyCu2Rha5D4S3Nu7A7W1s9BTd236Bm6vZg8",authDomain:"artifight.firebaseapp.com",projectId:"artifight",storageBucket:"artifight.firebasestorage.app",messagingSenderId:"29733165895",appId:"1:29733165895:web:5e16ad71eeb97cb6498a62"};
-const app=initializeApp(CFG),auth=getAuth(app),db=getFirestore(app),prov=new GoogleAuthProvider();
-
-// ============ КОНСТАНТЫ ============
-const EL={
-  fire:{n:"Огонь",e:["🕯️","🔥","🌋"]},
-  water:{n:"Вода",e:["💧","🌊","🐋"]},
-  earth:{n:"Земля",e:["🪨","⛰️","💎"]},
-  air:{n:"Воздух",e:["💨","🌬️","🌪️"]},
-  nature:{n:"Природа",e:["🌱","🌿","🌳"]},
-  metal:{n:"Металл",e:["🔩","⚙️","🛡️"]}
+const CFG={
+  apiKey:"AIzaSyCu2Rha5D4S3Nu7A7W1s9BTd236Bm6vZg8",
+  authDomain:"artifight.firebaseapp.com",
+  projectId:"artifight",
+  storageBucket:"artifight.firebasestorage.app",
+  messagingSenderId:"29733165895",
+  appId:"1:29733165895:web:5e16ad71eeb97cb6498a62"
 };
-const HEX=["fire","metal","nature","air","water","earth"];
-const FL_SIZE=11;
-const HAND5=5,HAND6=6,HAND8=8;
-const POOL_BONUS=3;
-const MAX_ROUNDS=20;
+const app=initializeApp(CFG);
+const auth=getAuth(app);
+const db=getFirestore(app);
+const prov=new GoogleAuthProvider();
 
-// ============ СОСТОЯНИЕ ============
-let USER=null,PROFILE=null,MATCH=null,TIMER_INT=null;
-let IS_HOST=false,MY_SIDE="p";
-let SEARCH_UNSUB=null,IS_SEARCHING=false,AI_MODE=false;
-let G=null;
 
-// ============ УТИЛИТЫ ============
+/* =====================================================
+   БЛОК 2: КОНСТАНТЫ ИГРЫ
+   Стихии, порядок шестиугольника, размеры руки/пула.
+   ===================================================== */
+const EL={
+  fire:  {n:"Огонь",  e:["🕯️","","🌋"]},
+  water: {n:"Вода",   e:["💧","🌊","🐋"]},
+  earth: {n:"Земля",  e:["🪨","️","💎"]},
+  air:   {n:"Воздух", e:["💨","️","️"]},
+  nature:{n:"Природа",e:["🌱","🌿","🌳"]},
+  metal: {n:"Металл", e:["🔩","️","🛡️"]}
+};
+const HEX=["fire","metal","nature","air","water","earth"]; // порядок в шестиугольнике
+const FL_SIZE=11;        // клеток в линии рубежей
+const HAND5=5;           // базовая рука
+const HAND6=6;           // рука после Рубежа поддержки
+const HAND8=8;           // рука после Рубежа твердыни
+const POOL_BONUS=3;      // пул = рука + 3
+const MAX_ROUNDS=20;     // после этого — внезапная смерть
+
+
+/* =====================================================
+   БЛОК 3: ГЛОБАЛЬНОЕ СОСТОЯНИЕ
+   Переменные, хранящие текущего пользователя и матч.
+   ===================================================== */
+let USER=null;          // текущий авторизованный пользователь
+let PROFILE=null;       // профиль из Firestore
+let MATCH=null;         // объект онлайн-матча (null если AI)
+let TIMER_INT=null;     // интервал таймера
+let IS_HOST=false;      // создал ли я комнату
+let MY_SIDE="p";        // моя сторона в онлайн-матче
+let SEARCH_UNSUB=null;  // функция отписки от слушателя матча
+let IS_SEARCHING=false; // идёт ли поиск соперника
+let AI_MODE=false;      // играем ли против AI
+let G=null;             // основное состояние текущей партии
+
+
+/* =====================================================
+   БЛОК 4: УТИЛИТЫ
+   Мелкие вспомогательные функции.
+   ===================================================== */
 function uid(){return crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).substr(2,9)}
 function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
 function $(id){return document.getElementById(id)}
 function showScr(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));$(id).classList.add('active')}
 function showBanner(t,d=2000){const b=$('banner');b.textContent=t;b.classList.add('show');if(d>0)setTimeout(()=>b.classList.remove('show'),d)}
 
-// ============ ЛОГИКА СТИХИЙ И БОЯ ============
+
+/* =====================================================
+   БЛОК 5: ЛОГИКА СТИХИЙ И БОЯ
+   rel() — отношение стихий, battle() — исход дуэли.
+   ===================================================== */
 function rel(a,d){
   if(a===d)return 0;
   const ai=HEX.indexOf(a),di=HEX.indexOf(d);
@@ -45,42 +82,47 @@ function rel(a,d){
   if(dist===5)return -1;
   return 0;
 }
-
 function pwr(a){return a.level+(a.vet?1:0)}
-
 function battle(a,b){
   const ra=rel(a.el,b.el),rb=rel(b.el,a.el);
   const ba=ra>0?ra:0,bb=rb>0?rb:0;
   const pa=pwr(a)+ba,pb=pwr(b)+bb;
   let res='draw';
-  if(pa>pb)res='a';
-  else if(pb>pa)res='b';
+  if(pa>pb)res='a';else if(pb>pa)res='b';
   return{res,pa,pb,ba,bb,rel:ra};
 }
 
+
+/* =====================================================
+   БЛОК 6: ГЕНЕРАЦИЯ АРТЕФАКТОВ
+   rollLvl() — уровень, genArt() — один, genHand() — набор.
+   ===================================================== */
 function rollLvl(){
   const r=Math.random()*100;
   if(r<60)return 1;
   if(r<90)return 2;
   return 3;
 }
-
 function genArt(){
   const k=HEX[Math.floor(Math.random()*6)];
   const l=rollLvl();
   return{id:uid(),el:k,name:EL[k].n,emoji:EL[k].e[l-1],level:l,vet:false,upg:false};
 }
-
 function genHand(n){return Array.from({length:n},()=>genArt())}
 function genPool(n){return genHand(n)}
 
+
+/* =====================================================
+   БЛОК 7: РЕНДЕРИНГ КАРТОЧЕК
+   artCard() — создаёт DOM-элемент карточки.
+   ===================================================== */
 function artCard(a,fd=false){
   const c=document.createElement('div');
   c.className='ac';
   c.dataset.id=a.id;
   c.dataset.el=a.el;
   if(fd){
-    c.classList.add('fd');
+    c.classList.add('fd'); // рубашка (скрытая карта)
   }else{
     let s='';
     for(let i=0;i<a.level;i++)s+='★';
@@ -91,7 +133,11 @@ function artCard(a,fd=false){
   return c;
 }
 
-// ============ FIREBASE: ПРОФИЛЬ ============
+
+/* =====================================================
+   БЛОК 8: FIREBASE — ПРОФИЛЬ И РЕЙТИНГ
+   saveProfile, updateRating, updateStats.
+   ===================================================== */
 async function saveProfile(u){
   try{
     const r=doc(db,"users",u.uid),s=await getDoc(r);
@@ -106,7 +152,6 @@ async function saveProfile(u){
     return{uid:u.uid,name:u.displayName||"Игрок",ratings:{PYRAMID:1000},stats:{PYRAMID:{w:0,l:0}}};
   }
 }
-
 async function updateRating(delta){
   if(!USER)return PROFILE?.ratings?.PYRAMID||1000;
   const nr=Math.max(0,(PROFILE.ratings?.PYRAMID||1000)+delta);
@@ -114,7 +159,6 @@ async function updateRating(delta){
   PROFILE.ratings.PYRAMID=nr;
   return nr;
 }
-
 async function updateStats(win){
   if(!USER)return;
   try{
@@ -124,6 +168,11 @@ async function updateStats(win){
   }catch(e){}
 }
 
+
+/* =====================================================
+   БЛОК 9: FIREBASE — ИСТОРИЯ МАТЧЕЙ
+   saveMatchRecord, loadHistory.
+   ===================================================== */
 async function saveMatchRecord(opponent,result,delta){
   if(!USER)return;
   try{
@@ -131,7 +180,6 @@ async function saveMatchRecord(opponent,result,delta){
       {opponent,result,delta,mode:"PYRAMID",date:Date.now()});
   }catch(e){}
 }
-
 async function loadHistory(){
   if(!USER)return[];
   try{
@@ -141,10 +189,15 @@ async function loadHistory(){
   }catch(e){return[]}
 }
 
-// ============ МАТЧМЕЙКИНГ ============
+
+/* =====================================================
+   БЛОК 10: МАТЧМЕЙКИНГ (ПОИСК СОПЕРНИКА)
+   findMatch, listenMatch, startOnlineMatch.
+   ===================================================== */
 async function findMatch(){
   const myRating=PROFILE.ratings?.PYRAMID||1000;
   try{
+    // Ищем открытую заявку с близким рейтингом
     const mq=query(collection(db,"matchmaking"),where("status","==","waiting"),where("mode","==","PYRAMID"),lim(10));
     const snap=await getDocs(mq);
     let best=null,bestDiff=Infinity;
@@ -155,12 +208,17 @@ async function findMatch(){
       if(diff<bestDiff&&diff<=500){bestDiff=diff;best={id:d.id,...data}}
     }
     if(best){
+      // Присоединяемся к найденной комнате
       await deleteDoc(doc(db,"matchmaking",best.id));
       const matchRef=doc(db,"matches",best.matchId);
-      await updateDoc(matchRef,{["players."+USER.uid]:{name:USER.displayName||"Игрок",rating:myRating,ready:false,side:"p2"},status:"active"});
+      await updateDoc(matchRef,{
+        ["players."+USER.uid]:{name:USER.displayName||"Игрок",rating:myRating,ready:false,side:"p2"},
+        status:"active"
+      });
       MY_SIDE="p2";IS_HOST=false;
       return best.matchId;
     }else{
+      // Создаём новую комнату и заявку
       const matchRef=await addDoc(collection(db,"matches"),{
         status:"waiting",mode:"PYRAMID",created:Date.now(),
         players:{[USER.uid]:{name:USER.displayName||"Игрок",rating:myRating,ready:false,side:"p1"}}
@@ -176,7 +234,6 @@ async function findMatch(){
     return null;
   }
 }
-
 function listenMatch(matchId){
   const unsub=onSnapshot(doc(db,"matches",matchId),snap=>{
     if(!snap.exists())return;
@@ -191,7 +248,6 @@ function listenMatch(matchId){
   });
   return unsub;
 }
-
 async function startOnlineMatch(matchId,data){
   MATCH={id:matchId,online:true,players:data.players,phase:'mulligan',round:1,frontline:5,
     matchball:{p1:false,p2:false},gameState:null};
@@ -201,7 +257,6 @@ async function startOnlineMatch(matchId,data){
   initLocalGame(false);
   showBanner("Соперник найден! Матч начинается!",3000);
 }
-
 function handleRemoteUpdate(data){
   if(!MATCH)return;
   if(data.gameState&&data.gameState.sender!==USER.uid){
@@ -209,7 +264,6 @@ function handleRemoteUpdate(data){
     if(gs.type==='ready'){showBanner("Соперник готов!",1500)}
   }
 }
-
 async function sendGameState(type,payload){
   if(!MATCH||!MATCH.online)return;
   try{
@@ -218,7 +272,11 @@ async function sendGameState(type,payload){
   }catch(e){}
 }
 
-// ============ ИНИЦИАЛИЗАЦИЯ МАТЧА ============
+
+/* =====================================================
+   БЛОК 11: ИНИЦИАЛИЗАЦИЯ МАТЧА
+   initLocalGame() — создаёт состояние партии.
+   ===================================================== */
 function initLocalGame(isAI=false){
   AI_MODE=isAI;
   G={
@@ -239,7 +297,12 @@ function initLocalGame(isAI=false){
   startMulligan();
 }
 
-// ============ РЕНДЕРИНГ ============
+
+/* =====================================================
+   БЛОК 12: РЕНДЕРИНГ ИГРОВОГО ПОЛЯ
+   renderFrontline, renderField, renderHand, placeArt.
+   ВАЖНО: карточки добавляются строго внутрь .sc
+   ===================================================== */
 function renderFrontline(){
   const fl=$('frontline');
   fl.innerHTML='';
@@ -260,34 +323,44 @@ function renderFrontline(){
   else mb.textContent="";
 }
 
+function getSlotEl(side,s){
+  // side: 'p' — игрок, 'e' — противник
+  if(side==='p')return document.querySelector(`.slot.ps[data-s="${s}"]`);
+  return document.querySelector(`.slot[data-side="e"][data-s="${s}"]`);
+}
+
 function renderField(){
   for(let s=1;s<=6;s++){
-    const pSlot=document.querySelector(`#player-front .slot[data-s="${s}"], #player-res .slot[data-s="${s}"]`);
-    const eSlot=document.querySelector(`#enemy-front .slot[data-s="${s}"], #enemy-res .slot[data-s="${s}"]`);
+    // --- Слот игрока ---
+    const pSlot=getSlotEl('p',s);
     if(pSlot){
-      pSlot.querySelector('.sc').innerHTML='';
+      const pContent=pSlot.querySelector('.sc');   // контейнер внутри слота
+      pContent.innerHTML='';                        // очищаем ТОЛЬКО контейнер
       pSlot.classList.remove('occupied');
       if(G.me.slots[s]){
         const card=artCard(G.me.slots[s]);
-        card.onclick=()=>{
+        card.onclick=()=>{                          // клик = вернуть в руку
           if(G.phase==='deploy'){
             G.me.hand.push(G.me.slots[s]);
             G.me.slots[s]=null;
             renderField();renderHand();updateReadyBtn();
           }
         };
-        pSlot.appendChild(card);
+        pContent.appendChild(card);                 // добавляем В КОНТЕЙНЕР
         pSlot.classList.add('occupied');
       }
+      pSlot.style.display=(s>=4&&!G.me.unlocked[s])?'none':'flex';
     }
+    // --- Слот противника ---
+    const eSlot=getSlotEl('e',s);
     if(eSlot){
-      eSlot.querySelector('.sc').innerHTML='';
+      const eContent=eSlot.querySelector('.sc');
+      eContent.innerHTML='';
       if(G.en.slots[s]){
-        eSlot.appendChild(artCard(G.en.slots[s],true));
+        eContent.appendChild(artCard(G.en.slots[s],true));
       }
+      eSlot.style.display=(s>=4&&!G.en.unlocked[s])?'none':'flex';
     }
-    if(pSlot)pSlot.style.display=(s>=4&&!G.me.unlocked[s])?'none':'flex';
-    if(eSlot)eSlot.style.display=(s>=4&&!G.en.unlocked[s])?'none':'flex';
   }
 }
 
@@ -308,9 +381,7 @@ function placeArt(a){
   let target=null;
   for(let s=1;s<=3;s++){if(!G.me.slots[s]){target=s;break}}
   if(!target){
-    for(let s=4;s<=6;s++){
-      if(G.me.unlocked[s]&&!G.me.slots[s]){target=s;break}
-    }
+    for(let s=4;s<=6;s++){if(G.me.unlocked[s]&&!G.me.slots[s]){target=s;break}}
   }
   if(!target){showBanner("Нет свободных слотов!");return}
   G.me.slots[target]=a;
@@ -324,7 +395,11 @@ function updateReadyBtn(){
   btn.classList.toggle('disabled',!frontFilled);
 }
 
-// ============ МУЛЛИГАН ============
+
+/* =====================================================
+   БЛОК 13: ФАЗА МУЛЛИГАНА (СТАРТОВАЯ ЗАМЕНА)
+   startMulligan()
+   ===================================================== */
 function startMulligan(){
   G.phase='mulligan';
   showScr('screen-mulligan');
@@ -354,7 +429,11 @@ function startMulligan(){
   };
 }
 
-// ============ РАССТАНОВКА ============
+
+/* =====================================================
+   БЛОК 14: ФАЗА РАССТАНОВКИ
+   startDeploy, getDeployTime, aiDeploy, autoDeploy.
+   ===================================================== */
 function startDeploy(){
   G.phase='deploy';
   showScr('screen-match');
@@ -371,11 +450,7 @@ function startDeploy(){
   };
   updateReadyBtn();
 }
-
-function getDeployTime(){
-  return Math.min(90+(G.round-1)*5,120);
-}
-
+function getDeployTime(){return Math.min(90+(G.round-1)*5,120)}
 function aiDeploy(){
   const sh=[...G.en.hand].sort(()=>Math.random()-.5);
   for(let s=1;s<=3;s++){if(G.en.slots[s])G.en.hand.push(G.en.slots[s])}
@@ -387,7 +462,6 @@ function aiDeploy(){
   if(G.en.unlocked[5]&&G.en.hand.length>0)G.en.slots[5]=G.en.hand.shift();
   if(G.en.unlocked[6]&&G.en.hand.length>0&&(G.en.slots[4]||G.en.slots[5]))G.en.slots[6]=G.en.hand.shift();
 }
-
 function autoDeploy(){
   const avail=[...G.me.hand].sort((a,b)=>pwr(b)-pwr(a));
   for(let s=1;s<=3;s++){if(!G.me.slots[s]&&avail.length>0)G.me.slots[s]=avail.shift()}
@@ -398,23 +472,27 @@ function autoDeploy(){
   startBattle();
 }
 
-// ============ БОЙ ============
+
+/* =====================================================
+   БЛОК 15: ФАЗА БОЯ
+   startBattle, animateSlot, applyUpgrades.
+   ===================================================== */
 async function startBattle(){
   G.phase='battle';
   $('btn-ready').classList.add('disabled');
-  // Открываем слоты противника
+  // Открываем скрытые слоты противника
   for(let s=1;s<=6;s++){
-    const eSlot=document.querySelector(`[data-s="${s}"][data-side="e"] .sc`);
-    if(eSlot&&G.en.slots[s]){
-      eSlot.innerHTML='';
+    const eContent=getSlotEl('e',s)?.querySelector('.sc');
+    if(eContent&&G.en.slots[s]){
+      eContent.innerHTML='';
       const card=artCard(G.en.slots[s]);
       card.classList.add('fade-in');
-      eSlot.appendChild(card);
+      eContent.appendChild(card);
     }
   }
   await sleep(800);
 
-  let myWins=0,enWins=0,draws=0;
+  let myWins=0,enWins=0;
   const results=[];
 
   // Бой фронтов 1-3
@@ -425,60 +503,40 @@ async function startBattle(){
     await animateSlot(s,r);
     if(r.res==='a'){myWins++;results.push({slot:s,winner:'me',pa,ea})}
     else if(r.res==='b'){enWins++;results.push({slot:s,winner:'en',pa,ea})}
-    else{draws++;results.push({slot:s,winner:'draw',pa,ea})}
+    else{results.push({slot:s,winner:'draw',pa,ea})}
   }
-
   // Бой резервов 4-6
   for(let s=4;s<=6;s++){
     if(G.me.slots[s]&&G.en.slots[s]){
       const r=battle(G.me.slots[s],G.en.slots[s]);
       await animateSlot(s,r);
-      if(r.res==='a')myWins++;
-      else if(r.res==='b')enWins++;
-      else draws++;
+      if(r.res==='a')myWins++;else if(r.res==='b')enWins++;
     }
   }
-
   await sleep(1000);
 
   // Итог раунда
   let winner=null,move=0;
-  if(myWins>enWins){
-    winner='me';
-    move=(myWins-enWins>=3)?2:1;
-  }else if(enWins>myWins){
-    winner='en';
-    move=(enWins-myWins>=3)?2:1;
-  }
+  if(myWins>enWins){winner='me';move=(myWins-enWins>=3)?2:1}
+  else if(enWins>myWins){winner='en';move=(enWins-myWins>=3)?2:1}
 
-  if(winner){
-    await moveFrontline(winner,move);
-  }else{
-    showBanner("Раунд ничейный!",2000);
-    await sleep(2000);
-  }
+  if(winner){await moveFrontline(winner,move)}
+  else{showBanner("Раунд ничейный!",2000);await sleep(2000)}
 
   applyUpgrades(results,winner);
-
   if(await checkEnd())return;
   startDraft();
 }
 
 async function animateSlot(s,r){
-  const pEl=document.querySelector(`[data-s="${s}"][data-side="p"] .sc .ac`);
-  const eEl=document.querySelector(`[data-s="${s}"][data-side="e"] .sc .ac`);
+  const pEl=getSlotEl('p',s)?.querySelector('.sc .ac');
+  const eEl=getSlotEl('e',s)?.querySelector('.sc .ac');
   if(pEl)pEl.classList.add('atk-r');
   if(eEl)eEl.classList.add('atk-l');
   await sleep(400);
-  if(r.res==='a'){
-    if(eEl)eEl.classList.add('dmg');
-    showBanner(`Слот ${s}: ПОБЕДА! (${r.pa} vs ${r.pb})`,1200);
-  }else if(r.res==='b'){
-    if(pEl)pEl.classList.add('dmg');
-    showBanner(`Слот ${s}: Поражение (${r.pa} vs ${r.pb})`,1200);
-  }else{
-    showBanner(`Слот ${s}: Ничья (${r.pa} vs ${r.pb})`,1200);
-  }
+  if(r.res==='a'){if(eEl)eEl.classList.add('dmg');showBanner(`Слот ${s}: ПОБЕДА! (${r.pa} vs ${r.pb})`,1200)}
+  else if(r.res==='b'){if(pEl)pEl.classList.add('dmg');showBanner(`Слот ${s}: Поражение (${r.pa} vs ${r.pb})`,1200)}
+  else{showBanner(`Слот ${s}: Ничья (${r.pa} vs ${r.pb})`,1200)}
   await sleep(600);
 }
 
@@ -488,50 +546,33 @@ function applyUpgrades(results,winner){
     if(r.winner==='me'&&r.pa&&!r.pa.vet){
       const enemyPwr=r.ea?pwr(r.ea):0;
       if(enemyPwr>=pwr(r.pa)){
-        if(r.pa.level<3){
-          r.pa.level++;
-          r.pa.emoji=EL[r.pa.el].e[r.pa.level-1];
-          r.pa.upg=true;
-        }else{
-          r.pa.vet=true;
-          r.pa.upg=true;
-        }
+        if(r.pa.level<3){r.pa.level++;r.pa.emoji=EL[r.pa.el].e[r.pa.level-1];r.pa.upg=true}
+        else{r.pa.vet=true;r.pa.upg=true}
       }
     }
   });
 }
 
+
+/* =====================================================
+   БЛОК 16: ДВИЖЕНИЕ ЛИНИИ РУБЕЖЕЙ
+   moveFrontline, checkEnd, checkUnlocks.
+   ===================================================== */
 async function moveFrontline(winner,amount){
   const dir=winner==='me'?1:-1;
   for(let i=0;i<amount;i++){
     const np=G.frontline+dir;
     if(np>=FL_SIZE){
       if(!G.matchball.en){
-        G.matchball.en=true;
-        G.frontline=FL_SIZE-1;
-        renderFrontline();
-        showBanner("🔥 МАТЧБОЛ у соперника!",3000);
-        await sleep(3000);
-      }else{
-        await endMatch('me');
-        return;
-      }
+        G.matchball.en=true;G.frontline=FL_SIZE-1;renderFrontline();
+        showBanner("🔥 МАТЧБОЛ у соперника!",3000);await sleep(3000);
+      }else{await endMatch('me');return}
     }else if(np<0){
       if(!G.matchball.me){
-        G.matchball.me=true;
-        G.frontline=0;
-        renderFrontline();
-        showBanner("🔥 МАТЧБОЛ у тебя!",3000);
-        await sleep(3000);
-      }else{
-        await endMatch('en');
-        return;
-      }
-    }else{
-      G.frontline=np;
-      renderFrontline();
-      await sleep(300);
-    }
+        G.matchball.me=true;G.frontline=0;renderFrontline();
+        showBanner("🔥 МАТЧБОЛ у тебя!",3000);await sleep(3000);
+      }else{await endMatch('en');return}
+    }else{G.frontline=np;renderFrontline();await sleep(300)}
   }
   const msg=winner==='me'?`Ты продвинул фронт на ${amount}!${amount===2?' ПРОРЫВ!':''}`
     :`Соперник продвинул фронт на ${amount}!${amount===2?' ПРОРЫВ!':''}`;
@@ -545,21 +586,46 @@ async function checkEnd(){
   if(G.matchball.en&&G.frontline>=FL_SIZE-1){await endMatch('me');return true}
   if(G.matchball.me&&G.frontline<=0){await endMatch('en');return true}
   if(G.round>=MAX_ROUNDS&&!G.suddenDeath){
-    G.suddenDeath=true;
-    renderFrontline();
+    G.suddenDeath=true;renderFrontline();
     showBanner("⚡ ВНЕЗАПНАЯ СМЕРТЬ! Следующий победитель раунда выигрывает!",3000);
     await sleep(3000);
   }
   return false;
 }
 
+function checkUnlocks(){
+  if(G.frontline>=8&&!G.me.unlocked[4]){
+    G.me.unlocked[4]=true;G.me.unlocked[5]=true;
+    G.me.handLimit=HAND6;G.me.poolSize=HAND6+POOL_BONUS;
+    showBanner("🔓 Открыты резервы 4 и 5! Рука: 6",3000);
+  }
+  if(G.frontline>=9&&!G.me.unlocked[6]){
+    G.me.unlocked[6]=true;
+    G.me.handLimit=HAND8;G.me.poolSize=HAND8+POOL_BONUS;
+    showBanner("🔓 Открыт слот 6! Рука: 8",3000);
+  }
+  if(G.frontline<=2&&!G.en.unlocked[4]){
+    G.en.unlocked[4]=true;G.en.unlocked[5]=true;
+    G.en.handLimit=HAND6;G.en.poolSize=HAND6+POOL_BONUS;
+  }
+  if(G.frontline<=1&&!G.en.unlocked[6]){
+    G.en.unlocked[6]=true;
+    G.en.handLimit=HAND8;G.en.poolSize=HAND8+POOL_BONUS;
+  }
+}
+
+
+/* =====================================================
+   БЛОК 17: ЗАВЕРШЕНИЕ МАТЧА
+   endMatch() — рейтинг, статистика, история.
+   ===================================================== */
 async function endMatch(winner){
   const isWin=winner==='me';
   stopTimer();
   let delta=0;
   let newRating=PROFILE?.ratings?.PYRAMID||1000;
 
-  // Рейтинг только для онлайн-матчей
+  // Рейтинг начисляется ТОЛЬКО в онлайн-матчах
   if(!AI_MODE&&MATCH&&MATCH.online){
     delta=isWin?20:-20;
     newRating=await updateRating(delta);
@@ -571,26 +637,25 @@ async function endMatch(winner){
   showScr('screen-result');
   $('res-title').textContent=isWin?'🏆 ПОБЕДА!':'💀 ПОРАЖЕНИЕ';
   $('res-title').style.color=isWin?'#2ecc71':'#e94560';
-
-  if(AI_MODE){
-    $('res-rating').textContent='Режим AI — рейтинг не изменяется';
-  }else{
-    $('res-rating').textContent=`${delta>0?'+':''}${delta} рейтинга (новый: ${newRating})`;
-  }
+  $('res-rating').textContent=AI_MODE
+    ?'Режим AI — рейтинг не изменяется'
+    :`${delta>0?'+':''}${delta} рейтинга (новый: ${newRating})`;
 
   $('btn-to-lobby').onclick=()=>{
-    AI_MODE=false;
-    MATCH=null;
+    AI_MODE=false;MATCH=null;
     showScr('screen-lobby');
     $('lobby-rating').textContent=newRating;
   };
 }
 
-// ============ ФАЗА ДОБОРА ============
+
+/* =====================================================
+   БЛОК 18: ФАЗА ДОБОРА
+   startDraft, renderDraft, aiDraft, autoDraft.
+   ===================================================== */
 function startDraft(){
   G.phase='draft';
   showScr('screen-draft');
-  // Возвращаем из слотов в руку
   for(let s=1;s<=6;s++){
     if(G.me.slots[s]){G.me.hand.push(G.me.slots[s]);G.me.slots[s]=null}
     if(G.en.slots[s]){G.en.hand.push(G.en.slots[s]);G.en.slots[s]=null}
@@ -675,31 +740,11 @@ function autoDraft(){
   startDeploy();
 }
 
-function checkUnlocks(){
-  // Рубеж поддержки (позиция 8) — открывает слоты 4+5, рука 6
-  if(G.frontline>=8&&!G.me.unlocked[4]){
-    G.me.unlocked[4]=true;G.me.unlocked[5]=true;
-    G.me.handLimit=HAND6;G.me.poolSize=HAND6+POOL_BONUS;
-    showBanner("🔓 Открыты резервы 4 и 5! Рука: 6",3000);
-  }
-  // Рубеж твердыни (позиция 9) — открывает слот 6, рука 8
-  if(G.frontline>=9&&!G.me.unlocked[6]){
-    G.me.unlocked[6]=true;
-    G.me.handLimit=HAND8;G.me.poolSize=HAND8+POOL_BONUS;
-    showBanner("🔓 Открыт слот 6! Рука: 8",3000);
-  }
-  // Для противника (зеркально)
-  if(G.frontline<=2&&!G.en.unlocked[4]){
-    G.en.unlocked[4]=true;G.en.unlocked[5]=true;
-    G.en.handLimit=HAND6;G.en.poolSize=HAND6+POOL_BONUS;
-  }
-  if(G.frontline<=1&&!G.en.unlocked[6]){
-    G.en.unlocked[6]=true;
-    G.en.handLimit=HAND8;G.en.poolSize=HAND8+POOL_BONUS;
-  }
-}
 
-// ============ ТАЙМЕРЫ ============
+/* =====================================================
+   БЛОК 19: ТАЙМЕРЫ
+   startTimer, stopTimer.
+   ===================================================== */
 function startTimer(seconds,onExpire){
   stopTimer();
   let remaining=seconds;
@@ -712,12 +757,15 @@ function startTimer(seconds,onExpire){
     if(remaining<=0){stopTimer();if(onExpire)onExpire()}
   },1000);
 }
-
 function stopTimer(){
   if(TIMER_INT){clearInterval(TIMER_INT);TIMER_INT=null}
 }
 
-// ============ МОДАЛКА СТИХИЙ ============
+
+/* =====================================================
+   БЛОК 20: МОДАЛКА СТИХИЙ
+   showElements, showElInfo.
+   ===================================================== */
 function showElements(){
   $('modal-elements').classList.add('show');
   const g=$('hex-grid');
@@ -731,7 +779,6 @@ function showElements(){
   });
   showElInfo('fire');
 }
-
 function showElInfo(k){
   let h=`<b>${EL[k].n.toUpperCase()}</b><br><br>`;
   HEX.forEach(o=>{
@@ -743,33 +790,36 @@ function showElInfo(k){
   $('el-info').innerHTML=h;
 }
 
-// ============ ИСТОРИЯ ============
+
+/* =====================================================
+   БЛОК 21: ИСТОРИЯ МАТЧЕЙ (UI)
+   showHistory()
+   ===================================================== */
 async function showHistory(){
   showScr('screen-history');
   const list=$('history-list');
   list.innerHTML='<p>Загрузка...</p>';
   const hist=await loadHistory();
-  if(hist.length===0){
-    list.innerHTML='<p>Пока нет матчей</p>';
-    return;
-  }
+  if(hist.length===0){list.innerHTML='<p>Пока нет матчей</p>';return}
   list.innerHTML=hist.map(h=>`<div class="hist-item">
     <span class="${h.result==='win'?'win':'lose'}">${h.result==='win'?'🏆 ПОБЕДА':'💀 ПОРАЖЕНИЕ'}</span>
     vs ${h.opponent} | ${h.delta>0?'+':''}${h.delta}⭐ | ${new Date(h.date).toLocaleDateString()}
   </div>`).join('');
 }
 
-// ============ АВТОРИЗАЦИЯ И ИНИЦИАЛИЗАЦИЯ ============
+
+/* =====================================================
+   БЛОК 22: КНОПКИ И АВТОРИЗАЦИЯ
+   Обработчики всех кнопок, onAuthStateChanged.
+   ===================================================== */
 $('btn-login').onclick=async()=>{
   try{await signInWithPopup(auth,prov)}
   catch(e){alert("Ошибка входа: "+e.message)}
 };
 
-$('btn-logout').onclick=async()=>{
-  await signOut(auth);
-};
+$('btn-logout').onclick=async()=>{await signOut(auth)};
 
-// КНОПКА БИТВА (ОНЛАЙН) — поиск бесконечный
+// БИТВА (онлайн) — поиск бесконечный, без таймаута
 $('btn-battle').onclick=async()=>{
   if(IS_SEARCHING)return;
   IS_SEARCHING=true;
@@ -779,9 +829,8 @@ $('btn-battle').onclick=async()=>{
   showBanner("🔍 Поиск соперника... Жди или нажми для отмены.",0);
   try{
     const matchId=await findMatch();
-    if(matchId){
-      SEARCH_UNSUB=listenMatch(matchId);
-    }else{
+    if(matchId){SEARCH_UNSUB=listenMatch(matchId)}
+    else{
       showBanner("Не удалось создать матч. Попробуй снова.");
       IS_SEARCHING=false;
       $('btn-battle').style.display='block';
@@ -797,7 +846,7 @@ $('btn-battle').onclick=async()=>{
   }
 };
 
-// ОТМЕНА ПОИСКА
+// Отмена поиска
 $('btn-searching').onclick=()=>{
   if(!IS_SEARCHING)return;
   IS_SEARCHING=false;
@@ -808,18 +857,15 @@ $('btn-searching').onclick=()=>{
   showBanner("Поиск отменён",2000);
 };
 
-// КНОПКА ИГРАТЬ С AI — без рейтинга
-$('btn-ai').onclick=()=>{
-  showScr('screen-match');
-  initLocalGame(true);
-};
+// Игра с AI — без рейтинга
+$('btn-ai').onclick=()=>{showScr('screen-match');initLocalGame(true)};
 
 $('btn-elements').onclick=showElements;
 $('btn-el-close').onclick=()=>$('modal-elements').classList.remove('show');
 $('btn-history').onclick=showHistory;
 $('btn-hist-back').onclick=()=>showScr('screen-lobby');
 
-// ============ АВТОРИЗАЦИЯ ============
+// Слушатель авторизации
 onAuthStateChanged(auth,async user=>{
   if(user){
     USER=user;
@@ -828,8 +874,7 @@ onAuthStateChanged(auth,async user=>{
     $('lobby-rating').textContent=PROFILE.ratings?.PYRAMID||1000;
     showScr('screen-lobby');
   }else{
-    USER=null;
-    PROFILE=null;
+    USER=null;PROFILE=null;
     showScr('screen-login');
   }
 });
