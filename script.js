@@ -364,13 +364,43 @@ vs ${h.opponent} | ${h.delta>0?'+':''}${h.delta}⭐ | ${new Date(h.date).toLocal
 // ============ АВТОРИЗАЦИЯ И ИНИЦИАЛИЗАЦИЯ ============
 $('btn-login').onclick=async()=>{try{await signInWithPopup(auth,prov)}catch(e){alert("Ошибка: "+e.message)}};
 $('btn-logout').onclick=async()=>{await signOut(auth)};
+let SEARCH_UNSUB=null;
+let IS_SEARCHING=false;
+
 $('btn-battle').onclick=async()=>{
-$('btn-battle').style.display='none';$('btn-searching').style.display='block';
-try{const matchId=await findMatch();listenMatch(matchId);showScr('screen-match');showBanner("Поиск соперника...",0);
-// Для теста с AI запускаем сразу
-setTimeout(()=>{if(!MATCH){initLocalGame()}},5000);
-}catch(e){showBanner("Ошибка поиска: "+e.message)}
-$('btn-battle').style.display='block';$('btn-searching').style.display='none'};
+if(IS_SEARCHING)return;
+IS_SEARCHING=true;
+$('btn-battle').style.display='none';
+$('btn-searching').style.display='block';
+showScr('screen-match');
+showBanner("🔍 Поиск соперника... Жди или нажми кнопку отмены.",0);
+try{
+const matchId=await findMatch();
+SEARCH_UNSUB=listenMatch(matchId);
+}catch(e){
+showBanner("Ошибка поиска: "+e.message);
+IS_SEARCHING=false;
+$('btn-battle').style.display='block';
+$('btn-searching').style.display='none';
+showScr('screen-lobby');
+}};
+
+// Отмена поиска
+$('btn-searching').onclick=()=>{
+if(!IS_SEARCHING)return;
+IS_SEARCHING=false;
+if(SEARCH_UNSUB){SEARCH_UNSUB();SEARCH_UNSUB=null}
+$('btn-battle').style.display='block';
+$('btn-searching').style.display='none';
+showScr('screen-lobby');
+showBanner("Поиск отменён",2000);
+};
+
+// Игра с AI — отдельный режим без рейтинга
+$('btn-ai').onclick=()=>{
+showScr('screen-match');
+initLocalGame(true); // true = режим AI без рейтинга
+};
 $('btn-elements').onclick=showElements;
 $('btn-el-close').onclick=()=>$('modal-elements').classList.remove('show');
 $('btn-history').onclick=showHistory;
