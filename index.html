@@ -9,149 +9,106 @@
 </head>
 <body>
 
-<!-- ========== ЭКРАН: ЗАГРУЗКА ========== -->
-<div id="screen-loading" class="screen active">
-  <div class="box"><h1>ARTIFIGHT</h1><p>Загрузка...</p></div>
-</div>
+<div id="screen-loading" class="screen active"><div class="box"><h1>ARTIFIGHT</h1><p>Загрузка...</p></div></div>
 
-<!-- ========== ЭКРАН: ВХОД ========== -->
-<div id="screen-login" class="screen">
-  <div class="box">
-    <h1>ARTIFIGHT</h1>
-    <p>Мир артефактов</p>
-    <button id="btn-login" class="btn">ВОЙТИ ЧЕРЕЗ GOOGLE</button>
-  </div>
-</div>
+<div id="screen-login" class="screen"><div class="box">
+<h1>ARTIFIGHT</h1><p>Мир артефактов</p>
+<button id="btn-login" class="btn">ВОЙТИ ЧЕРЕЗ GOOGLE</button>
+</div></div>
 
-<!-- ========== ЭКРАН: ЛОББИ ========== -->
-<div id="screen-lobby" class="screen">
-  <div class="box">
-    <div class="profile">
-      <span id="lobby-avatar">👤</span>
-      <div><h2 id="lobby-name">Игрок</h2><p>⭐ <span id="lobby-rating">1000</span></p></div>
-    </div>
-    <hr class="hr">
-    <div class="mode-box">РЕЖИМ: <b>PYRAMID</b></div>
-    <button id="btn-battle" class="btn">⚔️ БИТВА (ОНЛАЙН)</button>
-    <button id="btn-searching" class="btn disabled" style="display:none">🔍 ПОИСК... (нажми = отмена)</button>
-    <button id="btn-ai" class="btn alt">🤖 ИГРАТЬ С AI (без рейтинга)</button>
-    <button id="btn-elements" class="btn alt">⬡ СТИХИИ</button>
-    <button id="btn-history" class="btn alt">📜 ИСТОРИЯ</button>
-    <button id="btn-logout" class="btn red">ВЫЙТИ</button>
-  </div>
-</div>
+<div id="screen-lobby" class="screen"><div class="box">
+<div class="profile"><span id="lobby-avatar">👤</span><div><h2 id="lobby-name">Игрок</h2><p>⭐ <span id="lobby-rating">1000</span></p></div></div>
+<hr class="hr">
+<div class="mode-box">РЕЖИМ: <b>PYRAMID</b></div>
+<button id="btn-battle" class="btn">⚔️ БИТВА (ОНЛАЙН)</button>
+<button id="btn-searching" class="btn disabled" style="display:none">🔍 ПОИСК... (нажми = отмена)</button>
+<button id="btn-ai" class="btn alt">🤖 ИГРАТЬ С AI (без рейтинга)</button>
+<button id="btn-elements" class="btn alt">⬡ СТИХИИ</button>
+<button id="btn-history" class="btn alt">📜 ИСТОРИЯ</button>
+<button id="btn-logout" class="btn red">ВЫЙТИ</button>
+</div></div>
 
-<!-- ========== ЭКРАН: МАТЧ ========== -->
 <div id="screen-match" class="screen">
+<div class="timer-bar"><div class="timer-fill" id="timer-fill"></div><span id="timer-text">60</span></div>
+<div class="frontline-box">
+<div class="fl-info"><span>ЛИНИЯ РУБЕЖЕЙ</span><span>Раунд <span id="round-num">1</span></span></div>
+<div class="frontline" id="frontline"></div>
+<div id="matchball-info"></div>
+</div>
+<div id="banner" class="banner"></div>
 
-  <!-- Таймер -->
-  <div class="timer-bar"><div class="timer-fill" id="timer-fill"></div><span id="timer-text">60</span></div>
-
-  <!-- Линия рубежей -->
-  <div class="frontline-box">
-    <div class="fl-info"><span>ЛИНИЯ РУБЕЖЕЙ</span><span>Раунд <span id="round-num">1</span></span></div>
-    <div class="frontline" id="frontline"></div>
-    <div id="matchball-info"></div>
-  </div>
-
-  <!-- Баннер сообщений -->
-  <div id="banner" class="banner"></div>
-
-  <!-- Поле боя -->
-  <div class="field">
-
-    <!-- Сторона противника -->
-    <div class="side">
-      <div class="side-label" id="enemy-name">ПРОТИВНИК</div>
-      <div class="slots" id="enemy-front">
-        <div class="slot" data-s="1" data-side="e"><span class="sn">1</span><div class="sc"></div></div>
-        <div class="slot" data-s="2" data-side="e"><span class="sn">2</span><div class="sc"></div></div>
-        <div class="slot" data-s="3" data-side="e"><span class="sn">3</span><div class="sc"></div></div>
-      </div>
-      <div class="slots reserves" id="enemy-res">
-        <div class="slot res" data-s="4" data-side="e"><span class="sn">4</span><div class="sc"></div></div>
-        <div class="slot res" data-s="5" data-side="e"><span class="sn">5</span><div class="sc"></div></div>
-        <div class="slot res deep" data-s="6" data-side="e"><span class="sn">6</span><div class="sc"></div></div>
-      </div>
-    </div>
-
-    <div class="vs">⚔️ VS ⚔️</div>
-
-    <!-- Сторона игрока -->
-    <div class="side">
-      <div class="side-label">ТЫ</div>
-      <div class="slots" id="player-front">
-        <div class="slot ps" data-s="1" data-side="p"><span class="sn">1</span><div class="sc"></div></div>
-        <div class="slot ps" data-s="2" data-side="p"><span class="sn">2</span><div class="sc"></div></div>
-        <div class="slot ps" data-s="3" data-side="p"><span class="sn">3</span><div class="sc"></div></div>
-      </div>
-      <div class="slots reserves" id="player-res">
-        <div class="slot res ps" data-s="4" data-side="p"><span class="sn">4</span><div class="sc"></div></div>
-        <div class="slot res ps" data-s="5" data-side="p"><span class="sn">5</span><div class="sc"></div></div>
-        <div class="slot res deep ps" data-s="6" data-side="p"><span class="sn">6</span><div class="sc"></div></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Рука игрока -->
-  <div class="hand-box">
-    <div class="hand-label">ТВОЯ РУКА (<span id="hand-count">0</span>/<span id="hand-limit">5</span>)</div>
-    <div class="hand" id="hand"></div>
-  </div>
-
-  <!-- Кнопка готовности -->
-  <div class="actions"><button id="btn-ready" class="btn disabled">ГОТОВ</button></div>
+<!-- РУКА СОПЕРНИКА (открытая) -->
+<div class="hand-box enemy-hand-box">
+<div class="hand-label">РУКА СОПЕРНИКА (<span id="ehand-count">0</span>)</div>
+<div class="hand" id="ehand"></div>
 </div>
 
-<!-- ========== ЭКРАН: ФАЗА ДОБОРА ========== -->
-<div id="screen-draft" class="screen">
-  <div class="box">
-    <h2>ФАЗА ДОБОРА</h2>
-    <div class="draft-sec"><div class="dl">РУКА (нажми = сбросить)</div><div class="dc" id="d-hand"></div></div>
-    <div class="draft-sec"><div class="dl">ПУЛ (нажми = взять)</div><div class="dc" id="d-pool"></div></div>
-    <div class="d-status">Сброшено: <span id="d-disc">0</span> | Взято: <span id="d-pick">0</span>/<span id="d-need">0</span></div>
-    <button id="btn-draft-ok" class="btn disabled">ПОДТВЕРДИТЬ</button>
-  </div>
+<div class="field">
+<div class="side"><div class="side-label" id="enemy-name">ПРОТИВНИК</div>
+<div class="slots" id="enemy-front">
+<div class="slot" data-s="1" data-side="e"><span class="sn">1</span><div class="sc"></div></div>
+<div class="slot" data-s="2" data-side="e"><span class="sn">2</span><div class="sc"></div></div>
+<div class="slot" data-s="3" data-side="e"><span class="sn">3</span><div class="sc"></div></div>
+</div>
+<div class="slots reserves" id="enemy-res">
+<div class="slot res" data-s="4" data-side="e"><span class="sn">4</span><div class="sc"></div></div>
+<div class="slot res" data-s="5" data-side="e"><span class="sn">5</span><div class="sc"></div></div>
+<div class="slot res deep" data-s="6" data-side="e"><span class="sn">6</span><div class="sc"></div></div>
+</div></div>
+<div class="vs">⚔️ VS ⚔️</div>
+<div class="side"><div class="side-label">ТЫ</div>
+<div class="slots" id="player-front">
+<div class="slot ps" data-s="1" data-side="p"><span class="sn">1</span><div class="sc"></div></div>
+<div class="slot ps" data-s="2" data-side="p"><span class="sn">2</span><div class="sc"></div></div>
+<div class="slot ps" data-s="3" data-side="p"><span class="sn">3</span><div class="sc"></div></div>
+</div>
+<div class="slots reserves" id="player-res">
+<div class="slot res ps" data-s="4" data-side="p"><span class="sn">4</span><div class="sc"></div></div>
+<div class="slot res ps" data-s="5" data-side="p"><span class="sn">5</span><div class="sc"></div></div>
+<div class="slot res deep ps" data-s="6" data-side="p"><span class="sn">6</span><div class="sc"></div></div>
+</div></div>
 </div>
 
-<!-- ========== ЭКРАН: СТАРТОВАЯ ЗАМЕНА ========== -->
-<div id="screen-mulligan" class="screen">
-  <div class="box">
-    <h2>СТАРТОВАЯ ЗАМЕНА</h2>
-    <p>Замени до 2 артефактов</p>
-    <div class="dc" id="m-hand"></div>
-    <div class="m-count">Выбрано: <span id="m-count">0</span>/2</div>
-    <button id="btn-mull-ok" class="btn">ПОДТВЕРДИТЬ</button>
-  </div>
+<div class="hand-box"><div class="hand-label">ТВОЯ РУКА (<span id="hand-count">0</span>/<span id="hand-limit">5</span>)</div><div class="hand" id="hand"></div></div>
+<div class="actions"><button id="btn-ready" class="btn disabled">ГОТОВ</button></div>
 </div>
 
-<!-- ========== ЭКРАН: РЕЗУЛЬТАТ ========== -->
-<div id="screen-result" class="screen">
-  <div class="box">
-    <h1 id="res-title">ПОБЕДА!</h1>
-    <p id="res-rating">+20</p>
-    <button id="btn-to-lobby" class="btn">В ЛОББИ</button>
-  </div>
-</div>
+<div id="screen-draft" class="screen"><div class="box">
+<h2>ФАЗА ДОБОРА</h2>
+<div class="draft-sec"><div class="dl">РУКА (нажми = сбросить)</div><div class="dc" id="d-hand"></div></div>
+<div class="draft-sec"><div class="dl">ПУЛ (нажми = взять)</div><div class="dc" id="d-pool"></div></div>
+<div class="d-status">Сброшено: <span id="d-disc">0</span> | Взято: <span id="d-pick">0</span>/<span id="d-need">0</span></div>
+<button id="btn-draft-ok" class="btn disabled">ПОДТВЕРДИТЬ</button>
+</div></div>
 
-<!-- ========== ЭКРАН: ИСТОРИЯ ========== -->
-<div id="screen-history" class="screen">
-  <div class="box">
-    <h2>📜 ИСТОРИЯ МАТЧЕЙ</h2>
-    <div id="history-list" class="hist-list"></div>
-    <button id="btn-hist-back" class="btn alt">НАЗАД</button>
-  </div>
-</div>
+<div id="screen-mulligan" class="screen"><div class="box">
+<h2>СТАРТОВАЯ ЗАМЕНА</h2><p>Замени до 2 артефактов</p>
+<div class="dc" id="m-hand"></div>
+<div class="m-count">Выбрано: <span id="m-count">0</span>/2</div>
+<button id="btn-mull-ok" class="btn">ПОДТВЕРДИТЬ</button>
+</div></div>
 
-<!-- ========== МОДАЛКА: СТИХИИ ========== -->
-<div id="modal-elements" class="modal">
-  <div class="box">
-    <h2>⬡ СТИХИИ</h2>
-    <div class="hex-grid" id="hex-grid"></div>
-    <div class="el-info" id="el-info">Выбери стихию</div>
-    <button id="btn-el-close" class="btn alt">ЗАКРЫТЬ</button>
-  </div>
-</div>
+<div id="screen-wait" class="screen"><div class="box">
+<h2>⏳ ОЖИДАНИЕ</h2><p id="wait-text">Ждём соперника...</p>
+</div></div>
+
+<div id="screen-result" class="screen"><div class="box">
+<h1 id="res-title">ПОБЕДА!</h1><p id="res-rating">+20</p>
+<button id="btn-to-lobby" class="btn">В ЛОББИ</button>
+</div></div>
+
+<div id="screen-history" class="screen"><div class="box">
+<h2>📜 ИСТОРИЯ МАТЧЕЙ</h2>
+<div id="history-list" class="hist-list"></div>
+<button id="btn-hist-back" class="btn alt">НАЗАД</button>
+</div></div>
+
+<div id="modal-elements" class="modal"><div class="box">
+<h2>⬡ СТИХИИ</h2>
+<div class="hex-grid" id="hex-grid"></div>
+<div class="el-info" id="el-info">Выбери стихию</div>
+<button id="btn-el-close" class="btn alt">ЗАКРЫТЬ</button>
+</div></div>
 
 <script type="module" src="script.js"></script>
 </body>
