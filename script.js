@@ -11,7 +11,7 @@ const app=initializeApp(CFG),auth=getAuth(app),db=getFirestore(app),prov=new Goo
 /* =====================================================
    БЛОК 2: КОНСТАНТЫ
    ===================================================== */
-const EL={fire:{n:"Огонь",e:["🕯️","🔥",""]},water:{n:"Вода",e:["💧","🌊",""]},earth:{n:"Земля",e:["🪨","⛰️",""]},air:{n:"Воздух",e:["💨","🌬️","🌪️"]},nature:{n:"Природа",e:["🌱","",""]},metal:{n:"Металл",e:["🔩","️","🛡️"]}};
+const EL={fire:{n:"Огонь",e:["🕯️","🔥","🌋"]},water:{n:"Вода",e:["💧","🌊",""]},earth:{n:"Земля",e:["🪨","️","💎"]},air:{n:"Воздух",e:["💨","🌬️","🌪️"]},nature:{n:"Природа",e:["🌱","","🌳"]},metal:{n:"Металл",e:["🔩","⚙️","🛡️"]}};
 const HEX=["fire","metal","nature","air","water","earth"];
 const FL_SIZE=11,HAND5=5,HAND6=6,HAND8=8,POOL_BONUS=3,MAX_POOL=11,MAX_ROUNDS=20;
 
@@ -23,12 +23,9 @@ let MATCH_ID=null,MY_SIDE=null,UNSUB=null;
 let DOC=null;
 let IS_SEARCHING=false;
 let AI_MODE=false,AI_G=null;
-let mySlotsDraft={};       // моя расстановка до готовности
-let myHandDraft=[];        // [ИСПРАВЛЕНИЕ 1] моя рука-черновик (карты уходят из неё в слоты)
-let lastAnimatedRound=0;
-let ratedDone=false;
-let animating=false;       // [ИСПРАВЛЕНИЕ 2] блокировка повторных синхронизаций во время анимации
-let needResync=false;
+let mySlotsDraft={},myHandDraft=[];
+let lastAnimatedRound=0,ratedDone=false;
+let animating=false,needResync=false;
 
 /* =====================================================
    БЛОК 4: УТИЛИТЫ
@@ -41,13 +38,25 @@ function showBanner(t,d=2000){const b=$('banner');b.textContent=t;b.classList.ad
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 function seededHand(seed,n){const rng=mulberry32(seed);const out=[];for(let i=0;i<n;i++){const k=HEX[Math.floor(rng()*6)];const r=rng()*100;const l=r<60?1:r<90?2:3;out.push({id:"s"+seed+"_"+i,el:k,name:EL[k].n,emoji:EL[k].e[l-1],level:l,vet:false,upg:false})}return out}
 function randArt(){const k=HEX[Math.floor(Math.random()*6)];const r=Math.random()*100;const l=r<60?1:r<90?2:3;return{id:uid(),el:k,name:EL[k].n,emoji:EL[k].e[l-1],level:l,vet:false,upg:false}}
+function effectIcon(t){const d=document.createElement('div');d.className='boom';d.style.fontSize='24px';d.textContent=t;return d}
 
 /* =====================================================
-   БЛОК 5: ЛОГИКА БОЯ
+   БЛОК 5: ЛОГИКА БОЯ И ПРОКАЧКА
    ===================================================== */
 function rel(a,d){if(a===d)return 0;const ai=HEX.indexOf(a),di=HEX.indexOf(d);const dist=(di-ai+6)%6;return dist===1?1:dist===2?2:dist===4?-2:dist===5?-1:0}
 function pwr(a){return a.level+(a.vet?1:0)}
 function battle(a,b){const ra=rel(a.el,b.el),rb=rel(b.el,a.el);const ba=ra>0?ra:0,bb=rb>0?rb:0;const pa=pwr(a)+ba,pb=pwr(b)+bb;let res='draw';if(pa>pb)res='a';else if(pb>pa)res='b';return{res,pa,pb}}
+/* [ИСПРАВЛЕНИЕ 2] прокачка победителя */
+function maybeUpgrade(w,l){
+  if(w.vet)return null;
+  if(pwr(l)>=pwr(w)){
+    const c={...w};
+    if(c.level<3){c.level++;c.emoji=EL[c.el].e[c.level-1];c.upg=true}
+    else{c.vet=true;c.upg=true}
+    return c;
+  }
+  return null;
+}
 
 /* =====================================================
    БЛОК 6: КАРТОЧКИ
@@ -89,16 +98,8 @@ async function findMatch(){
 
 /* =====================================================
    БЛОК 9: СЛУШАТЕЛЬ И СИНХРОНИЗАЦИЯ
-   [ИСПРАВЛЕНИЕ 2] флаг animating не даёт прерывать анимацию
    ===================================================== */
-function listenMatch(id){
-  return onSnapshot(doc(db,"matches",id),snap=>{
-    if(!snap.exists())return;
-    DOC=snap.data();
-    if(animating){needResync=true;return}
-    syncFromDoc();
-  });
-}
+function listenMatch(id){return onSnapshot(doc(db,"matches",id),snap=>{if(!snap.exists())return;DOC=snap.data();if(animating){needResync=true;return}syncFromDoc()})}
 function otherSide(){return MY_SIDE==="p1"?"p2":"p1"}
 function me(){return DOC.players[MY_SIDE]}
 function other(){return DOC.players[otherSide()]}
@@ -113,13 +114,16 @@ async function syncFromDoc(){
     if(!me().mullDone){showMulligan()}
     else{showScr('screen-wait');$('wait-text').textContent="Ждём замены соперника..."}
   }
-  else if(ph==="deploy"){showDeploy()}
-  else if(ph==="battle"){showScr('screen-wait');$('wait-text').textContent="⚔️ Бой..."}
+  else if(ph==="deploy"){
+    /* [ИСПРАВЛЕНИЕ 1,3,4] если я уже готов — заблокированный экран,
+       таймер НЕ перезапускается, слоты/рука НЕ сбрасываются */
+    if(me().ready){showDeployLocked()}
+    else{showDeploy()}
+  }
+  else if(ph==="battle"){stopTimer();showScr('screen-wait');$('wait-text').textContent="⚔️ Бой..."}
   else if(ph==="draft"){
     if(DOC.battleLog&&DOC.battleLog.round!==lastAnimatedRound){
-      animating=true;
-      await animateBattle(DOC.battleLog);
-      animating=false;
+      animating=true;await animateBattle(DOC.battleLog);animating=false;
       if(needResync){needResync=false;return syncFromDoc()}
     }
     if(!me().draftDone){showDraft()}
@@ -133,16 +137,9 @@ async function advancePhase(){
   if(!DOC)return;
   const p1=DOC.players.p1,p2=DOC.players.p2;
   try{
-    if(DOC.phase==="mulligan"&&p1.mullDone&&p2.mullDone){
-      await updateDoc(doc(db,"matches",MATCH_ID),{phase:"deploy"});
-    }
-    else if(DOC.phase==="deploy"&&p1.ready&&p2.ready){
-      await updateDoc(doc(db,"matches",MATCH_ID),{phase:"battle"});
-    }
-    /* [ИСПРАВЛЕНИЕ 3] бой считает ЛЮБОЙ игрок, не только p1 */
-    else if(DOC.phase==="battle"&&!DOC.battleDone){
-      await computeBattle();
-    }
+    if(DOC.phase==="mulligan"&&p1.mullDone&&p2.mullDone){await updateDoc(doc(db,"matches",MATCH_ID),{phase:"deploy"})}
+    else if(DOC.phase==="deploy"&&p1.ready&&p2.ready){await updateDoc(doc(db,"matches",MATCH_ID),{phase:"battle"})}
+    else if(DOC.phase==="battle"&&!DOC.battleDone){await computeBattle()}
     else if(DOC.phase==="draft"&&p1.draftDone&&p2.draftDone){
       await updateDoc(doc(db,"matches",MATCH_ID),{round:DOC.round+1,phase:"deploy",battleDone:false,"players.p1.ready":false,"players.p2.ready":false,"players.p1.draftDone":false,"players.p2.draftDone":false,"players.p1.slots":null,"players.p2.slots":null});
     }
@@ -150,8 +147,8 @@ async function advancePhase(){
 }
 
 /* =====================================================
-   БЛОК 10: ВЫЧИСЛЕНИЕ БОЯ
-   [ИСПРАВЛЕНИЕ 4-скрытое] пересчитываем руки: выжившие + непоставленные
+   БЛОК 10: ВЫЧИСЛЕНИЕ БОЯ (хост-логика, считает любой)
+   [ИСПРАВЛЕНИЕ 2] добавлена прокачка и эффекты в log
    ===================================================== */
 async function computeBattle(){
   const s1=DOC.players.p1.slots||{},s2=DOC.players.p2.slots||{};
@@ -160,15 +157,17 @@ async function computeBattle(){
     const a=s1[s],b=s2[s];
     if(!a||!b)continue;
     const r=battle(a,b);
-    log.push({slot:s,res:r.res,pa:r.pa,pb:r.pb});
+    let aOut=a,bOut=b,aUp=false,bUp=false;
+    if(r.res==='a'){const up=maybeUpgrade(a,b);if(up){aOut=up;aUp=true}}
+    else if(r.res==='b'){const up=maybeUpgrade(b,a);if(up){bOut=up;bUp=true}}
+    log.push({slot:s,res:r.res,pa:r.pa,pb:r.pb,a:aOut,b:bOut,aUp,bUp});
     if(r.res==='a')w1++;else if(r.res==='b')w2++;
   }
   const logMap={};log.forEach(e=>logMap[e.slot]=e);
 
-  // Новые руки: непоставленные + выжившие
   function newHand(sideKey){
     const P=DOC.players[sideKey];
-    const S=sideKey==='p1'?s1:s2, O=sideKey==='p1'?s2:s1;
+    const S=sideKey==='p1'?s1:s2,O=sideKey==='p1'?s2:s1;
     const placedIds=new Set(Object.values(S).filter(Boolean).map(a=>a.id));
     const notPlaced=(P.hand||[]).filter(a=>!placedIds.has(a.id));
     const surv=[];
@@ -176,8 +175,8 @@ async function computeBattle(){
       const a=S[s];if(!a)continue;
       if(!O[s]){surv.push(a);continue}
       const e=logMap[s];if(!e){surv.push(a);continue}
-      const iWin=(sideKey==='p1'&&e.res==='a')||(sideKey==='p2'&&e.res==='b');
-      if(iWin)surv.push(a);
+      if(sideKey==='p1'&&e.res==='a')surv.push(e.a);
+      else if(sideKey==='p2'&&e.res==='b')surv.push(e.b);
     }
     return[...notPlaced,...surv];
   }
@@ -189,8 +188,7 @@ async function computeBattle(){
 
   let frontline=DOC.frontline;
   const matchball={...DOC.matchball};
-  let suddenDeath=DOC.suddenDeath;
-  let endWinner=null;
+  let suddenDeath=DOC.suddenDeath,endWinner=null;
   if(roundWinner){
     const dir=roundWinner==='p1'?1:-1;
     for(let i=0;i<move;i++){
@@ -211,14 +209,11 @@ async function computeBattle(){
   if(frontline<=2&&!un2[4]){un2[4]=un2[5]=true;hl2=HAND6}
   if(frontline<=1&&!un2[6]){un2[6]=true;hl2=HAND8}
 
-  const updates={
-    battleLog:{round:DOC.round,log,w1,w2,roundWinner,move},
-    battleDone:true,frontline,matchball,suddenDeath,
+  const updates={battleLog:{round:DOC.round,log,w1,w2,roundWinner,move},battleDone:true,frontline,matchball,suddenDeath,
     "players.p1.hand":hand1,"players.p2.hand":hand2,
     "players.p1.unlocked":un1,"players.p2.unlocked":un2,
     "players.p1.handLimit":hl1,"players.p1.poolSize":hl1+POOL_BONUS,
-    "players.p2.handLimit":hl2,"players.p2.poolSize":hl2+POOL_BONUS
-  };
+    "players.p2.handLimit":hl2,"players.p2.poolSize":hl2+POOL_BONUS};
   if(endWinner){updates.phase="end";updates.winner=endWinner}
   else{updates.phase="draft"}
   await updateDoc(doc(db,"matches",MATCH_ID),updates);
@@ -226,6 +221,7 @@ async function computeBattle(){
 
 /* =====================================================
    БЛОК 11: АНИМАЦИЯ БОЯ
+   [ИСПРАВЛЕНИЕ 2] эффекты 💥 / ⚖️ и показ прокачки
    ===================================================== */
 async function animateBattle(bl){
   lastAnimatedRound=bl.round;
@@ -237,14 +233,30 @@ async function animateBattle(bl){
   }
   await sleep(700);
   for(const item of bl.log){
-    const pEl=getSlotEl('p',item.slot)?.querySelector('.sc .ac');
-    const eEl=getSlotEl('e',item.slot)?.querySelector('.sc .ac');
+    const pSc=getSlotEl('p',item.slot)?.querySelector('.sc');
+    const eSc=getSlotEl('e',item.slot)?.querySelector('.sc');
+    const pEl=pSc?.querySelector('.ac'),eEl=eSc?.querySelector('.ac');
     if(pEl)pEl.classList.add('atk-r');
     if(eEl)eEl.classList.add('atk-l');
     await sleep(450);
-    if(item.res==='a'){if(eEl)eEl.classList.add('dmg');showBanner(`Слот ${item.slot}: ТЫ победил (${item.pa} vs ${item.pb})`,1100)}
-    else if(item.res==='b'){if(pEl)pEl.classList.add('dmg');showBanner(`Слот ${item.slot}: соперник победил (${item.pa} vs ${item.pb})`,1100)}
-    else showBanner(`Слот ${item.slot}: ничья (${item.pa} vs ${item.pb})`,1100);
+    if(item.res==='a'){
+      if(eEl)eEl.classList.add('dmg');
+      await sleep(300);
+      if(eSc){eSc.innerHTML='';eSc.appendChild(effectIcon('💥'))}
+      if(pSc){pSc.innerHTML='';pSc.appendChild(artCard(item.a))}
+      showBanner(item.aUp?`Слот ${item.slot}: ПОБЕДА! Артефакт повышен ▲ (${item.pa} vs ${item.pb})`:`Слот ${item.slot}: ПОБЕДА (${item.pa} vs ${item.pb})`,1100);
+    }else if(item.res==='b'){
+      if(pEl)pEl.classList.add('dmg');
+      await sleep(300);
+      if(pSc){pSc.innerHTML='';pSc.appendChild(effectIcon('💥'))}
+      if(eSc){eSc.innerHTML='';eSc.appendChild(artCard(item.b))}
+      showBanner(item.bUp?`Слот ${item.slot}: поражение. Артефакт соперника повышен ▲ (${item.pa} vs ${item.pb})`:`Слот ${item.slot}: поражение (${item.pa} vs ${item.pb})`,1100);
+    }else{
+      await sleep(300);
+      if(pSc){pSc.innerHTML='';pSc.appendChild(effectIcon('⚖️'))}
+      if(eSc){eSc.innerHTML='';eSc.appendChild(effectIcon('⚖️'))}
+      showBanner(`Слот ${item.slot}: ничья, оба уничтожены (${item.pa} vs ${item.pb})`,1100);
+    }
     await sleep(700);
   }
   if(bl.roundWinner)showBanner(bl.roundWinner===MY_SIDE?`Ты продвинул фронт на ${bl.move}!`:`Соперник продвинул фронт на ${bl.move}!`,2000);
@@ -253,7 +265,6 @@ async function animateBattle(bl){
 
 /* =====================================================
    БЛОК 12: РЕНДЕРИНГ ПОЛЯ И РУК
-   [ИСПРАВЛЕНИЕ 1] рука берётся из myHandDraft
    ===================================================== */
 function getSlotEl(side,s){return side==='p'?document.querySelector(`.slot.ps[data-s="${s}"]`):document.querySelector(`.slot[data-side="e"][data-s="${s}"]`)}
 function setSlotCard(side,s,art,facedown){
@@ -279,6 +290,15 @@ function renderMyHand(){
   $('hand-count').textContent=myHandDraft.length;
   $('hand-limit').textContent=me().handLimit;
 }
+/* [ИСПРАВЛЕНИЕ 4] рука без кликов в заблокированном состоянии */
+function renderMyHandLocked(){
+  const h=$('hand');h.innerHTML='';
+  const slotIds=new Set(Object.values(me().slots||{}).filter(Boolean).map(a=>a.id));
+  const rest=(me().hand||[]).filter(a=>!slotIds.has(a.id));
+  rest.forEach(a=>{h.appendChild(artCard(a))});
+  $('hand-count').textContent=rest.length;
+  $('hand-limit').textContent=me().handLimit;
+}
 function renderEnemyHand(){
   const h=$('ehand');h.innerHTML='';
   (other().hand||[]).forEach(a=>{h.appendChild(artCard(a,false,true))});
@@ -290,7 +310,7 @@ function placeArt(a){
   if(!target){for(let s=4;s<=6;s++){if(me().unlocked[s]&&!mySlotsDraft[s]){target=s;break}}}
   if(!target){showBanner("Нет свободных слотов!");return}
   mySlotsDraft[target]=a;
-  myHandDraft=myHandDraft.filter(x=>x.id!==a.id); // [ИСПРАВЛЕНИЕ 1] убираем из руки
+  myHandDraft=myHandDraft.filter(x=>x.id!==a.id);
   renderDeploySlots();renderMyHand();updateReady();
 }
 function returnFromSlot(s){
@@ -306,7 +326,7 @@ function renderDeploySlots(){
       const sc=pEl.querySelector('.sc');sc.innerHTML='';pEl.classList.remove('occupied');
       if(mySlotsDraft[s]){
         const card=artCard(mySlotsDraft[s]);
-        card.onclick=()=>returnFromSlot(s); // клик по слоту = вернуть в руку
+        card.onclick=()=>returnFromSlot(s);
         sc.appendChild(card);pEl.classList.add('occupied');
       }
       pEl.style.display=(s>=4&&!me().unlocked[s])?'none':'flex';
@@ -340,11 +360,13 @@ function showMulligan(){
 
 /* =====================================================
    БЛОК 14: ФАЗА РАССТАНОВКИ
+   [ИСПРАВЛЕНИЕ 1,3,4] showDeployLocked для готового игрока
    ===================================================== */
 function showDeploy(){
   showScr('screen-match');
   mySlotsDraft={};
-  myHandDraft=[...(me().hand||[])]; // [ИСПРАВЛЕНИЕ 1] черновик руки
+  myHandDraft=[...(me().hand||[])];
+  $('btn-ready').textContent='ГОТОВ';
   renderFrontline();renderMyHand();renderEnemyHand();renderDeploySlots();updateReady();
   startTimer(getDeployTime(),()=>autoReady());
   $('btn-ready').onclick=async()=>{
@@ -352,6 +374,21 @@ function showDeploy(){
     stopTimer();
     await updateDoc(doc(db,"matches",MATCH_ID),{["players."+MY_SIDE+".slots"]:mySlotsDraft,["players."+MY_SIDE+".ready"]:true});
   };
+}
+/* Заблокированное состояние: я готов, жду соперника.
+   Таймер НЕ перезапускается, клики отключены. */
+function showDeployLocked(){
+  showScr('screen-match');
+  renderFrontline();renderEnemyHand();
+  for(let s=1;s<=6;s++){
+    setSlotCard('p',s,me().slots?.[s],false);
+    setSlotCard('e',s,other().slots?.[s],true);
+  }
+  renderMyHandLocked();
+  const btn=$('btn-ready');
+  btn.classList.add('disabled');
+  btn.textContent='ТЫ ГОТОВ, ЖДЁМ СОПЕРНИКА...';
+  showBanner('Твоя расстановка зафиксирована. Ждём готовности соперника...',0);
 }
 function getDeployTime(){return Math.min(90+(DOC.round-1)*5,120)}
 async function autoReady(){
@@ -432,7 +469,6 @@ function stopTimer(){if(TIMER_INT){clearInterval(TIMER_INT);TIMER_INT=null}}
 
 /* =====================================================
    БЛОК 18: РЕЖИМ AI
-   [ИСПРАВЛЕНИЕ 4] добавлена фаза добора, исправлено копирование
    ===================================================== */
 function startAI(){
   AI_MODE=true;
@@ -450,12 +486,13 @@ function aiMulligan(){
 function aiDeploy(){
   showScr('screen-match');
   mySlotsDraft={};
-  AI_G.me.draftHand=[...AI_G.me.hand]; // черновик руки AI
+  AI_G.me.draftHand=[...AI_G.me.hand];
   $('enemy-name').textContent='🤖 AI (без рейтинга)';
   const sh=[...AI_G.en.hand].sort(()=>Math.random()-.5);
   AI_G.en.slots={1:sh[0],2:sh[1],3:sh[2]};
   AI_G.en.hand=AI_G.en.hand.filter(a=>a.id!==sh[0].id&&a.id!==sh[1].id&&a.id!==sh[2].id);
   renderFrontlineAI();renderMyHandAI();renderDeployAI();updateReady();
+  $('btn-ready').textContent='ГОТОВ';
   startTimer(90,()=>autoReadyAI());
   $('btn-ready').onclick=()=>{if($('btn-ready').classList.contains('disabled'))return;stopTimer();aiBattle()};
 }
@@ -469,7 +506,7 @@ function renderDeployAI(){
   for(let s=1;s<=6;s++){
     const p=getSlotEl('p',s),e=getSlotEl('e',s);
     if(p){const sc=p.querySelector('.sc');sc.innerHTML='';p.classList.remove('occupied');
-      if(mySlotsDraft[s]){const card=artCard(mySlotsDraft[s]);card.onclick=()=>{delete mySlotsDraft[s];AI_G.me.draftHand.push(card?mySlotsDraft:0);renderDeployAI();renderMyHandAI();updateReady()};sc.appendChild(card);p.classList.add('occupied')}
+      if(mySlotsDraft[s]){const a=mySlotsDraft[s];const card=artCard(a);card.onclick=()=>{delete mySlotsDraft[s];AI_G.me.draftHand.push(a);renderDeployAI();renderMyHandAI();updateReady()};sc.appendChild(card);p.classList.add('occupied')}
       p.style.display=(s>=4&&!AI_G.me.un[s])?'none':'flex'}
     if(e){const sc=e.querySelector('.sc');sc.innerHTML='';if(AI_G.en.slots[s])sc.appendChild(artCard(AI_G.en.slots[s],true));e.style.display=(s>=4&&!AI_G.en.un[s])?'none':'flex'}
   }
@@ -483,23 +520,26 @@ async function aiBattle(){
   for(let s=1;s<=6;s++){
     const a=mySlotsDraft[s],b=AI_G.en.slots[s];if(!a||!b)continue;
     const r=battle(a,b);logMap[s]=r;
-    if(r.res==='a'){mw++}else if(r.res==='b'){ew++}
+    const pSc=getSlotEl('p',s)?.querySelector('.sc'),eSc=getSlotEl('e',s)?.querySelector('.sc');
+    if(r.res==='a'){mw++;if(eSc){eSc.innerHTML='';eSc.appendChild(effectIcon('💥'))}}
+    else if(r.res==='b'){ew++;if(pSc){pSc.innerHTML='';pSc.appendChild(effectIcon('💥'))}}
+    else{if(pSc){pSc.innerHTML='';pSc.appendChild(effectIcon('⚖️'))}if(eSc){eSc.innerHTML='';eSc.appendChild(effectIcon('⚖️'))}}
     showBanner(`Слот ${s}: ${r.res==='a'?'ПОБЕДА':r.res==='b'?'поражение':'ничья'} (${r.pa} vs ${r.pb})`,900);
     await sleep(900);
   }
-  // Выжившие
   const mySurv=[],enSurv=[];
   for(let s=1;s<=6;s++){
     const a=mySlotsDraft[s],b=AI_G.en.slots[s];
     if(a&&!b)mySurv.push(a);
     if(b&&!a)enSurv.push(b);
-    if(a&&b){const r=logMap[s];if(r.res==='a')mySurv.push(a);else if(r.res==='b')enSurv.push(b)}
+    if(a&&b){const r=logMap[s];
+      if(r.res==='a'){const up=maybeUpgrade(a,b);mySurv.push(up||a)}
+      else if(r.res==='b'){const up=maybeUpgrade(b,a);enSurv.push(up||b)}}
   }
   const myNotPlaced=AI_G.me.hand.filter(x=>!Object.values(mySlotsDraft).some(y=>y&&y.id===x.id));
   const enNotPlaced=AI_G.en.hand.filter(x=>!Object.values(AI_G.en.slots).some(y=>y&&y.id===x.id));
   AI_G.me.hand=[...myNotPlaced,...mySurv];
   AI_G.en.hand=[...enNotPlaced,...enSurv];
-  // Движение фронта
   let win=null,mv=0;
   if(mw>ew){win='me';mv=mw-ew>=3?2:1}else if(ew>mw){win='en';mv=ew-mw>=3?2:1}
   if(win){const dir=win==='me'?1:-1;AI_G.frontline=Math.max(0,Math.min(FL_SIZE-1,AI_G.frontline+dir*mv))}
@@ -527,9 +567,7 @@ function aiDraftPhase(){
     stopTimer();
     AI_G.me.hand=AI_G.me.hand.filter(a=>!disc.has(a.id));
     pool.forEach(a=>{if(pick.has(a.id))AI_G.me.hand.push(a)});
-    AI_G.round++;
-    mySlotsDraft={};
-    aiDeploy();
+    AI_G.round++;mySlotsDraft={};aiDeploy();
   };
   startTimer(60,()=>{
     let need=AI_G.me.hl-AI_G.me.hand.length;
@@ -544,7 +582,7 @@ function aiEnd(){const win=AI_G.frontline>5;showScr('screen-result');$('res-titl
    БЛОК 19: МОДАЛКА СТИХИЙ И ИСТОРИЯ
    ===================================================== */
 function showElements(){$('modal-elements').classList.add('show');const g=$('hex-grid');g.innerHTML='';HEX.forEach(k=>{const d=document.createElement('div');d.className='hx';d.innerHTML=`<span class="he">${EL[k].e[1]}</span>${EL[k].n}`;d.onclick=()=>{let h=`<b>${EL[k].n.toUpperCase()}</b><br><br>`;HEX.forEach(o=>{if(o===k)return;const r=rel(k,o);let s=r===2?'➤➤':r===1?'➤':r===-1?'◁':r===-2?'◁◁':'=';h+=`${s} ${EL[o].n}<br>`});$('el-info').innerHTML=h};g.appendChild(d)})}
-async function showHistory(){showScr('screen-history');const l=$('history-list');l.innerHTML='<p>Загрузка...</p>';const h=await loadHistory();l.innerHTML=h.length?h.map(x=>`<div class="hist-item"><span class="${x.result==='win'?'win':'lose'}">${x.result==='win'?'🏆':''}</span> vs ${x.opponent} | ${x.delta>0?'+':''}${x.delta}⭐ | ${new Date(x.date).toLocaleDateString()}</div>`).join(''):'<p>Пока нет матчей</p>'}
+async function showHistory(){showScr('screen-history');const l=$('history-list');l.innerHTML='<p>Загрузка...</p>';const h=await loadHistory();l.innerHTML=h.length?h.map(x=>`<div class="hist-item"><span class="${x.result==='win'?'win':'lose'}">${x.result==='win'?'🏆':'💀'}</span> vs ${x.opponent} | ${x.delta>0?'+':''}${x.delta}⭐ | ${new Date(x.date).toLocaleDateString()}</div>`).join(''):'<p>Пока нет матчей</p>'}
 
 /* =====================================================
    БЛОК 20: КНОПКИ И АВТОРИЗАЦИЯ
