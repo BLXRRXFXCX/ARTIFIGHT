@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ARTIFIGHT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Экран загрузки -->
+    <div id="loading-screen" class="screen active">
+        <div class="pixel-box">
+            <h1>ARTIFIGHT</h1>
+            <p>Загрузка...</p>
+        </div>
+    </div>
+
+    <!-- Экран входа -->
+    <div id="login-screen" class="screen">
+        <div class="pixel-box">
+            <h1>ARTIFIGHT</h1>
+            <p>Добро пожаловать в мир артефактов</p>
+            <button id="login-btn" class="pixel-btn">ВОЙТИ ЧЕРЕЗ GOOGLE</button>
+        </div>
+    </div>
+
+    <!-- Лобби -->
+    <div id="lobby-screen" class="screen">
+        <div class="pixel-box">
+            <h2 id="player-name">Игрок</h2>
+            <p>Рейтинг CLASSIC: <span id="player-rating">1000</span></p>
+            <hr class="pixel-hr">
+            <button id="play-btn" class="pixel-btn">ИГРАТЬ (VS AI)</button>
+            <button id="elements-btn" class="pixel-btn secondary">⬡ СТИХИИ</button>
+            <button id="logout-btn" class="pixel-btn secondary">ВЫЙТИ</button>
+        </div>
+    </div>
+
+    <!-- Экран матча -->
+    <div id="match-screen" class="screen">
+        <!-- Линия рубежей -->
+        <div class="frontline-container">
+            <div class="frontline-label">ЛИНИЯ РУБЕЖЕЙ</div>
+            <div class="frontline" id="frontline"></div>
+            <div class="score-display">
+                <span id="p1-score">0</span> : <span id="p2-score">0</span>
+            </div>
+        </div>
+
+        <!-- Поле боя -->
+        <div class="battlefield" id="battlefield">
+            <div class="slots-row enemy-slots">
+                <div class="slot" data-slot="1" data-side="enemy">
+                    <div class="slot-label">СЛОТ 1</div>
+                    <div class="slot-content"></div>
+                </div>
+                <div class="slot" data-slot="2" data-side="enemy">
+                    <div class="slot-label">СЛОТ 2</div>
+                    <div class="slot-content"></div>
+                </div>
+                <div class="slot" data-slot="3" data-side="enemy">
+                    <div class="slot-label">СЛОТ 3</div>
+                    <div class="slot-content"></div>
+                </div>
+            </div>
+            <div class="vs-divider">⚔️ VS ⚔️</div>
+            <div class="slots-row player-slots">
+                <div class="slot player-slot" data-slot="1" data-side="player">
+                    <div class="slot-label">СЛОТ 1</div>
+                    <div class="slot-content"></div>
+                </div>
+                <div class="slot player-slot" data-slot="2" data-side="player">
+                    <div class="slot-label">СЛОТ 2</div>
+                    <div class="slot-content"></div>
+                </div>
+                <div class="slot player-slot" data-slot="3" data-side="player">
+                    <div class="slot-label">СЛОТ 3</div>
+                    <div class="slot-content"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Рука игрока -->
+        <div class="hand-container" id="hand-container">
+            <div class="hand-label">ТВОЯ РУКА</div>
+            <div class="hand-cards" id="hand-cards"></div>
+        </div>
+
+        <!-- Кнопки действий -->
+        <div class="action-buttons" id="action-buttons">
+            <button id="confirm-btn" class="pixel-btn">ГОТОВ</button>
+        </div>
+
+        <!-- Информационное сообщение -->
+        <div class="info-banner" id="info-banner"></div>
+    </div>
+
+    <!-- Экран пула добора -->
+    <div id="draft-screen" class="screen">
+        <div class="pixel-box">
+            <h2>ФАЗА ДОБОРА</h2>
+            <p id="draft-info">Выбери артефакты для сброса и новые из пула</p>
+            
+            <div class="draft-section">
+                <div class="draft-label">ТВОЯ РУКА (нажми для сброса)</div>
+                <div class="draft-cards" id="draft-hand"></div>
+            </div>
+
+            <div class="draft-section">
+                <div class="draft-label">ПУЛ (нажми чтобы взять)</div>
+                <div class="draft-cards" id="draft-pool"></div>
+            </div>
+
+            <div class="draft-status">
+                Сброшено: <span id="discard-count">0</span> | 
+                Взято: <span id="pick-count">0</span> / <span id="pick-needed">0</span>
+            </div>
+
+            <button id="draft-confirm" class="pixel-btn" disabled>ПОДТВЕРДИТЬ</button>
+        </div>
+    </div>
+
+    <!-- Экран стартовой замены -->
+    <div id="mulligan-screen" class="screen">
+        <div class="pixel-box">
+            <h2>СТАРТОВАЯ ЗАМЕНА</h2>
+            <p>Ты можешь заменить до 2 артефактов</p>
+            
+            <div class="draft-section">
+                <div class="draft-label">ТВОЯ СТАРТОВАЯ РУКА</div>
+                <div class="draft-cards" id="mulligan-hand"></div>
+            </div>
+
+            <div class="mulligan-counter">
+                Выбрано для замены: <span id="mulligan-count">0</span> / 2
+            </div>
+
+            <button id="mulligan-confirm" class="pixel-btn">ПОДТВЕРДИТЬ</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно стихий -->
+    <div id="elements-modal" class="modal">
+        <div class="modal-content pixel-box">
+            <h2>⬡ СТИХИИ</h2>
+            <div class="hexagon-display" id="hexagon-display"></div>
+            <div class="element-info" id="element-info">Выбери стихию</div>
+            <button id="close-elements" class="pixel-btn secondary">ЗАКРЫТЬ</button>
+        </div>
+    </div>
+
+    <!-- Экран победы/поражения -->
+    <div id="result-screen" class="screen">
+        <div class="pixel-box">
+            <h1 id="result-title">ПОБЕДА!</h1>
+            <p id="result-rating">+20 рейтинга</p>
+            <button id="back-to-lobby" class="pixel-btn">В ЛОББИ</button>
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>
