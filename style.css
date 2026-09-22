@@ -75,12 +75,30 @@ p{margin:8px 0}
 .ac .ae{font-size:20px;font-family:sans-serif}
 .ac .an{font-size:5px;color:#ccc}
 .ac .as{font-size:7px;color:#ffd700;letter-spacing:-1px}
-.ac.fd{background:repeating-linear-gradient(45deg,#0f3460,#0f3460 4px,#16213e 4px,#16213e 8px)}
+
+/* Цвета стихий (должны быть ДО рубашки) */
+.ac[data-el="fire"]{background:#4a1a0f}
+.ac[data-el="water"]{background:#0f2a4a}
+.ac[data-el="earth"]{background:#3a2a1a}
+.ac[data-el="air"]{background:#2a3a4a}
+.ac[data-el="nature"]{background:#1a3a1a}
+.ac[data-el="metal"]{background:#3a3a3a}
+
+/* ============ РУБАШКА (СКРЫТАЯ КАРТА) ============ */
+/* [ИСПРАВЛЕНИЕ 5] пиксельное мерцание всеми цветами стихий,
+   чтобы истинный цвет был скрыт */
+@keyframes fdCycle{
+  0%,15%{background:#4a1a0f}
+  16%,31%{background:#0f2a4a}
+  32%,47%{background:#3a2a1a}
+  48%,63%{background:#2a3a4a}
+  64%,79%{background:#1a3a1a}
+  80%,95%{background:#3a3a3a}
+  96%,100%{background:#4a1a0f}
+}
+.ac.fd{animation:fdCycle 1.5s steps(1,end) infinite}
 .ac.fd .ae,.ac.fd .as,.ac.fd .an{display:none}
-.ac.fd::before{content:"?";font-size:22px;color:#4cc9f0;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)}
-.ac[data-el="fire"]{background:#4a1a0f}.ac[data-el="water"]{background:#0f2a4a}
-.ac[data-el="earth"]{background:#3a2a1a}.ac[data-el="air"]{background:#2a3a4a}
-.ac[data-el="nature"]{background:#1a3a1a}.ac[data-el="metal"]{background:#3a3a3a}
+.ac.fd::before{content:"?";font-size:22px;color:#fff;text-shadow:1px 1px 0 #000;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)}
 
 /* ============ ДОБОР / МУЛЛИГАН ============ */
 .actions{margin:6px 0}
@@ -105,10 +123,12 @@ p{margin:8px 0}
 .hx .he{font-size:20px;display:block;margin-bottom:2px}
 .el-info{background:#0f1a2e;padding:8px;margin:8px 0;border:2px solid #0f3460;font-size:7px;text-align:left;min-height:50px}
 
-/* ============ АНИМАЦИИ ============ */
+/* ============ АНИМАЦИИ БОЯ ============ */
 @keyframes atkR{0%,100%{transform:translateX(0)}50%{transform:translateX(15px)}}
 @keyframes atkL{0%,100%{transform:translateX(0)}50%{transform:translateX(-15px)}}
 @keyframes dmg{0%,100%{filter:brightness(1)}50%{filter:brightness(2)}}
 .atk-r{animation:atkR .4s}.atk-l{animation:atkL .4s}.dmg{animation:dmg .3s}
 @keyframes fadeIn{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:scale(1)}}
 .fade-in{animation:fadeIn .4s}
+@keyframes boom{0%{transform:scale(.3);opacity:0}50%{transform:scale(1.4);opacity:1}100%{transform:scale(1);opacity:1}}
+.boom{animation:boom .4s}
