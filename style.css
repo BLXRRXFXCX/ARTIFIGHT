@@ -1,0 +1,479 @@
+* {
+    box-sizing: border-box;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Press Start 2P', monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-size: 10px;
+    line-height: 1.4;
+}
+
+.screen {
+    display: none;
+    width: 100%;
+    max-width: 500px;
+    padding: 10px;
+    text-align: center;
+}
+
+.screen.active {
+    display: block;
+}
+
+.pixel-box {
+    background-color: #16213e;
+    border: 4px solid #0f3460;
+    padding: 15px;
+    box-shadow: 
+        -4px 0 0 0 #000,
+        4px 0 0 0 #000,
+        0 -4px 0 0 #000,
+        0 4px 0 0 #000;
+    margin: 10px;
+}
+
+h1 {
+    color: #e94560;
+    font-size: 20px;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 0 #000;
+}
+
+h2 {
+    color: #4cc9f0;
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+p {
+    margin: 10px 0;
+}
+
+.pixel-hr {
+    border: 0;
+    border-top: 2px dashed #0f3460;
+    margin: 15px 0;
+}
+
+.pixel-btn {
+    display: block;
+    width: 100%;
+    background-color: #e94560;
+    color: #fff;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    padding: 14px 10px;
+    margin: 8px 0;
+    border: none;
+    cursor: pointer;
+    box-shadow: 
+        inset -4px -4px 0px 0px rgba(0,0,0,0.5),
+        0 4px 0 0 #8a1c31;
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.pixel-btn:active {
+    transform: translateY(4px);
+    box-shadow: 
+        inset -4px -4px 0px 0px rgba(0,0,0,0.5),
+        0 0 0 0 #8a1c31;
+}
+
+.pixel-btn.secondary {
+    background-color: #533483;
+    box-shadow: 
+        inset -4px -4px 0px 0px rgba(0,0,0,0.5),
+        0 4px 0 0 #2c1a4d;
+}
+
+.pixel-btn:disabled {
+    background-color: #555;
+    box-shadow: inset -4px -4px 0px 0px rgba(0,0,0,0.5);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Линия рубежей */
+.frontline-container {
+    background-color: #16213e;
+    border: 3px solid #0f3460;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.frontline-label {
+    font-size: 8px;
+    color: #4cc9f0;
+    margin-bottom: 5px;
+}
+
+.frontline {
+    display: flex;
+    justify-content: center;
+    gap: 2px;
+    margin-bottom: 8px;
+}
+
+.front-cell {
+    width: 22px;
+    height: 22px;
+    background-color: #0f3460;
+    border: 2px solid #1a1a2e;
+}
+
+.front-cell.p1-side { background-color: #2a5d8f; }
+.front-cell.p2-side { background-color: #8f2a2a; }
+.front-cell.center { background-color: #4a4a4a; }
+.front-cell.marker { 
+    background-color: #ffd700;
+    box-shadow: 0 0 8px #ffd700;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.score-display {
+    font-size: 12px;
+    color: #ffd700;
+}
+
+/* Поле боя */
+.battlefield {
+    background-color: #0f1a2e;
+    border: 3px solid #0f3460;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.slots-row {
+    display: flex;
+    justify-content: space-around;
+    gap: 5px;
+}
+
+.slot {
+    width: 30%;
+    aspect-ratio: 3/4;
+    background-color: #16213e;
+    border: 2px solid #4cc9f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    position: relative;
+}
+
+.slot.player-slot {
+    border-color: #4cc9f0;
+    cursor: pointer;
+}
+
+.slot.player-slot:hover {
+    border-color: #ffd700;
+}
+
+.slot.player-slot.occupied {
+    border-color: #2ecc71;
+}
+
+.slot-label {
+    font-size: 7px;
+    color: #888;
+    margin-top: 3px;
+}
+
+.slot-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.vs-divider {
+    text-align: center;
+    margin: 5px 0;
+    font-size: 14px;
+    color: #e94560;
+}
+
+/* Рука игрока */
+.hand-container {
+    background-color: #16213e;
+    border: 3px solid #0f3460;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.hand-label {
+    font-size: 8px;
+    color: #4cc9f0;
+    margin-bottom: 5px;
+}
+
+.hand-cards {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.artifact-card {
+    width: 55px;
+    height: 75px;
+    background-color: #0f3460;
+    border: 2px solid #4cc9f0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 0;
+    box-shadow: 0 3px 0 0 #000;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.1s;
+}
+
+.artifact-card:hover {
+    transform: translateY(-3px);
+}
+
+.artifact-card.selected {
+    border-color: #ffd700;
+    transform: translateY(-8px);
+    box-shadow: 0 0 10px #ffd700;
+}
+
+.artifact-card.discard {
+    border-color: #e94560;
+    opacity: 0.5;
+}
+
+.artifact-card.upgraded::after {
+    content: "▲";
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    color: #2ecc71;
+    font-size: 10px;
+}
+
+.art-emoji {
+    font-size: 26px;
+    line-height: 1;
+    font-family: sans-serif;
+}
+
+.art-name {
+    font-size: 6px;
+    color: #ccc;
+}
+
+.art-stars {
+    font-size: 8px;
+    color: #ffd700;
+    text-shadow: 1px 1px 0 #000;
+    letter-spacing: -1px;
+}
+
+.artifact-card.facedown {
+    background: repeating-linear-gradient(
+        45deg,
+        #0f3460,
+        #0f3460 5px,
+        #16213e 5px,
+        #16213e 10px
+    );
+}
+
+.artifact-card.facedown .art-emoji,
+.artifact-card.facedown .art-stars,
+.artifact-card.facedown .art-name {
+    display: none;
+}
+
+.artifact-card.facedown::before {
+    content: "?";
+    font-size: 30px;
+    color: #4cc9f0;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* Кнопки действий */
+.action-buttons {
+    margin: 10px 0;
+}
+
+/* Информационный баннер */
+.info-banner {
+    background-color: #16213e;
+    border: 2px solid #e94560;
+    padding: 8px;
+    font-size: 9px;
+    margin-top: 5px;
+    min-height: 20px;
+    display: none;
+}
+
+.info-banner.show {
+    display: block;
+}
+
+/* Фаза добора и муллиган */
+.draft-section {
+    margin: 15px 0;
+    padding: 10px;
+    background-color: #0f1a2e;
+    border: 2px solid #0f3460;
+}
+
+.draft-label {
+    font-size: 8px;
+    color: #4cc9f0;
+    margin-bottom: 8px;
+}
+
+.draft-cards {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.draft-status {
+    font-size: 9px;
+    color: #ffd700;
+    margin: 10px 0;
+}
+
+.mulligan-counter {
+    font-size: 9px;
+    color: #ffd700;
+    margin: 10px 0;
+}
+
+/* Модальное окно */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.8);
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    padding: 20px;
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-content {
+    max-width: 500px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.hexagon-display {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 15px 0;
+}
+
+.hex-element {
+    background-color: #0f1a2e;
+    border: 2px solid #4cc9f0;
+    padding: 8px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 8px;
+}
+
+.hex-element:hover {
+    border-color: #ffd700;
+}
+
+.hex-element-emoji {
+    font-size: 24px;
+    display: block;
+    margin-bottom: 3px;
+}
+
+.element-info {
+    background-color: #0f1a2e;
+    padding: 10px;
+    margin: 10px 0;
+    border: 2px solid #0f3460;
+    font-size: 8px;
+    text-align: left;
+    min-height: 60px;
+}
+
+/* Анимации боя */
+@keyframes attackRight {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(20px); }
+}
+
+@keyframes attackLeft {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(-20px); }
+}
+
+@keyframes damage {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(2) hue-rotate(180deg); }
+}
+
+.attacking-right { animation: attackRight 0.5s; }
+.attacking-left { animation: attackLeft 0.5s; }
+.damaged { animation: damage 0.3s; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.5); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s;
+}
+
+/* Цвета стихий */
+.artifact-card[data-element="fire"] { background-color: #4a1a0f; }
+.artifact-card[data-element="water"] { background-color: #0f2a4a; }
+.artifact-card[data-element="earth"] { background-color: #3a2a1a; }
+.artifact-card[data-element="air"] { background-color: #2a3a4a; }
+.artifact-card[data-element="nature"] { background-color: #1a3a1a; }
+.artifact-card[data-element="metal"] { background-color: #3a3a3a; }
+
+/* Стили для разных фаз */
+.phase-label {
+    background-color: #e94560;
+    color: #fff;
+    padding: 5px;
+    margin: 5px 0;
+    font-size: 10px;
+    display: inline-block;
+}
