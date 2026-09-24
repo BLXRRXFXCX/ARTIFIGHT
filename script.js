@@ -11,7 +11,7 @@ const app=initializeApp(CFG),auth=getAuth(app),db=getFirestore(app),prov=new Goo
 /* =====================================================
    БЛОК 2: КОНСТАНТЫ
    ===================================================== */
-const EL={fire:{n:"Огонь",e:["🕯️","🔥","🌋"]},water:{n:"Вода",e:["💧","🌊",""]},earth:{n:"Земля",e:["🪨","️","💎"]},air:{n:"Воздух",e:["💨","🌬️","🌪️"]},nature:{n:"Природа",e:["🌱","","🌳"]},metal:{n:"Металл",e:["🔩","⚙️","🛡️"]}};
+const EL={fire:{n:"Огонь",e:["🕯️","🔥","🌋"]},water:{n:"Вода",e:["💧","🌊","🐋"]},earth:{n:"Земля",e:["🪨","️⛰️","💎"]},air:{n:"Воздух",e:["💨","🌬️","🌪️"]},nature:{n:"Природа",e:["🌱","🌿","🌳"]},metal:{n:"Металл",e:["🔩","⚙️","🛡️"]}};
 const HEX=["fire","metal","nature","air","water","earth"];
 const FL_SIZE=11,HAND5=5,HAND6=6,HAND8=8,POOL_BONUS=3,MAX_POOL=11,MAX_ROUNDS=20;
 
@@ -491,7 +491,7 @@ function aiDeploy(){
   const sh=[...AI_G.en.hand].sort(()=>Math.random()-.5);
   AI_G.en.slots={1:sh[0],2:sh[1],3:sh[2]};
   AI_G.en.hand=AI_G.en.hand.filter(a=>a.id!==sh[0].id&&a.id!==sh[1].id&&a.id!==sh[2].id);
-  renderFrontlineAI();renderMyHandAI();renderDeployAI();updateReady();
+renderFrontlineAI();renderMyHandAI();renderEnemyHandAI();renderDeployAI();updateReady();
   $('btn-ready').textContent='ГОТОВ';
   startTimer(90,()=>autoReadyAI());
   $('btn-ready').onclick=()=>{if($('btn-ready').classList.contains('disabled'))return;stopTimer();aiBattle()};
@@ -501,6 +501,11 @@ function renderMyHandAI(){
   const h=$('hand');h.innerHTML='';
   AI_G.me.draftHand.forEach(a=>{const c=artCard(a);c.onclick=()=>{let t=null;for(let s=1;s<=3;s++){if(!mySlotsDraft[s]){t=s;break}}if(!t)for(let s=4;s<=6;s++){if(AI_G.me.un[s]&&!mySlotsDraft[s]){t=s;break}}if(!t)return;mySlotsDraft[t]=a;AI_G.me.draftHand=AI_G.me.draftHand.filter(x=>x.id!==a.id);renderDeployAI();renderMyHandAI();updateReady()};h.appendChild(c)});
   $('hand-count').textContent=AI_G.me.draftHand.length;$('hand-limit').textContent=AI_G.me.hl;
+}
+function renderEnemyHandAI(){
+  const h=$('ehand');h.innerHTML='';
+  (AI_G.en.hand||[]).forEach(a=>{h.appendChild(artCard(a,false,true))});
+  $('ehand-count').textContent=(AI_G.en.hand||[]).length;
 }
 function renderDeployAI(){
   for(let s=1;s<=6;s++){
@@ -548,8 +553,8 @@ async function aiBattle(){
   if(AI_G.frontline>=9&&!AI_G.en.un[6]){AI_G.en.un[6]=true;AI_G.en.hl=HAND8;AI_G.en.pl=HAND8+POOL_BONUS}
   if(AI_G.frontline<=2&&!AI_G.me.un[4]){AI_G.me.un[4]=AI_G.me.un[5]=true;AI_G.me.hl=HAND6;AI_G.me.pl=HAND6+POOL_BONUS}
   if(AI_G.frontline<=1&&!AI_G.me.un[6]){AI_G.me.un[6]=true;AI_G.me.hl=HAND8;AI_G.me.pl=HAND8+POOL_BONUS}
-  renderFrontlineAI();
-  renderFrontlineAI();
+   renderFrontlineAI();renderEnemyHandAI();
+  await sleep(1200);
   await sleep(1200);
   if(AI_G.frontline>=FL_SIZE-1||AI_G.frontline<=0||AI_G.round>MAX_ROUNDS){aiEnd();return}
   aiDraftPhase();
