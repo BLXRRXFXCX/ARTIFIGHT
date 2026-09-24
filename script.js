@@ -2,7 +2,7 @@
    БЛОК 1: FIREBASE
    ===================================================== */
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import{getAuth,signInWithPopup,GoogleAuthProvider,signOut,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import{getAuth,signInWithPopup,signInWithRedirect,getRedirectResult,GoogleAuthProvider,signOut,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import{getFirestore,doc,getDoc,setDoc,updateDoc,collection,query,where,limit as lim,getDocs,addDoc,deleteDoc,onSnapshot}from"https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const CFG={apiKey:"AIzaSyCu2Rha5D4S3Nu7A7W1s9BTd236Bm6vZg8",authDomain:"artifight.firebaseapp.com",projectId:"artifight",storageBucket:"artifight.firebasestorage.app",messagingSenderId:"29733165895",appId:"1:29733165895:web:5e16ad71eeb97cb6498a62"};
@@ -204,10 +204,10 @@ async function computeBattle(){
 
   const un1={...DOC.players.p1.unlocked},un2={...DOC.players.p2.unlocked};
   let hl1=DOC.players.p1.handLimit,hl2=DOC.players.p2.handLimit;
-  if(frontline>=8&&!un1[4]){un1[4]=un1[5]=true;hl1=HAND6}
-  if(frontline>=9&&!un1[6]){un1[6]=true;hl1=HAND8}
-  if(frontline<=2&&!un2[4]){un2[4]=un2[5]=true;hl2=HAND6}
-  if(frontline<=1&&!un2[6]){un2[6]=true;hl2=HAND8}
+  if(frontline>=8&&!un2[4]){un2[4]=un2[5]=true;hl2=HAND6}
+  if(frontline>=9&&!un2[6]){un2[6]=true;hl2=HAND8}
+  if(frontline<=2&&!un1[4]){un1[4]=un1[5]=true;hl1=HAND6}
+  if(frontline<=1&&!un1[6]){un1[6]=true;hl1=HAND8}
 
   const updates={battleLog:{round:DOC.round,log,w1,w2,roundWinner,move},battleDone:true,frontline,matchball,suddenDeath,
     "players.p1.hand":hand1,"players.p2.hand":hand2,
@@ -542,7 +542,13 @@ async function aiBattle(){
   AI_G.en.hand=[...enNotPlaced,...enSurv];
   let win=null,mv=0;
   if(mw>ew){win='me';mv=mw-ew>=3?2:1}else if(ew>mw){win='en';mv=ew-mw>=3?2:1}
-  if(win){const dir=win==='me'?1:-1;AI_G.frontline=Math.max(0,Math.min(FL_SIZE-1,AI_G.frontline+dir*mv))}
+    if(win){const dir=win==='me'?1:-1;AI_G.frontline=Math.max(0,Math.min(FL_SIZE-1,AI_G.frontline+dir*mv))}
+  while(AI_G.en.hand.length<AI_G.en.hl)AI_G.en.hand.push(randArt());
+  if(AI_G.frontline>=8&&!AI_G.en.un[4]){AI_G.en.un[4]=AI_G.en.un[5]=true;AI_G.en.hl=HAND6;AI_G.en.pl=HAND6+POOL_BONUS}
+  if(AI_G.frontline>=9&&!AI_G.en.un[6]){AI_G.en.un[6]=true;AI_G.en.hl=HAND8;AI_G.en.pl=HAND8+POOL_BONUS}
+  if(AI_G.frontline<=2&&!AI_G.me.un[4]){AI_G.me.un[4]=AI_G.me.un[5]=true;AI_G.me.hl=HAND6;AI_G.me.pl=HAND6+POOL_BONUS}
+  if(AI_G.frontline<=1&&!AI_G.me.un[6]){AI_G.me.un[6]=true;AI_G.me.hl=HAND8;AI_G.me.pl=HAND8+POOL_BONUS}
+  renderFrontlineAI();
   renderFrontlineAI();
   await sleep(1200);
   if(AI_G.frontline>=FL_SIZE-1||AI_G.frontline<=0||AI_G.round>MAX_ROUNDS){aiEnd();return}
@@ -587,7 +593,14 @@ async function showHistory(){showScr('screen-history');const l=$('history-list')
 /* =====================================================
    БЛОК 20: КНОПКИ И АВТОРИЗАЦИЯ
    ===================================================== */
-$('btn-login').onclick=async()=>{try{await signInWithPopup(auth,prov)}catch(e){alert(e.message)}};
+$('btn-login').onclick=async()=>{
+  try{
+    await signInWithPopup(auth,prov);
+  }catch(e){
+    try{await signInWithRedirect(auth,prov)}catch(e2){alert(e2.message)}
+  }
+};
+getRedirectResult(auth).catch(e=>console.error("redirect error:",e));
 $('btn-logout').onclick=async()=>{await signOut(auth)};
 $('btn-battle').onclick=async()=>{
   if(IS_SEARCHING)return;IS_SEARCHING=true;
